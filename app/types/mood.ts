@@ -25,3 +25,5 @@ export interface MoodStats {
   }>;
   totalEntries: number;
 }
+
+export type JournalViewType = 'list' | 'calendar';
