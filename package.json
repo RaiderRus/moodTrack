@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:backend": "cd backend && uvicorn main:app --reload --port 8000 --host 0.0.0.0",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:backend\"",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check-backend": "curl http://localhost:8000/api/health"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
