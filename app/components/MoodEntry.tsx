@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,25 @@ import { moodTags } from '../config/mood-tags';
 import { transcribeAudio, analyzeMoodText } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 export default function MoodEntry() {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+      }
+    };
+    
+    checkAuth();
+  }, [router]);
 
   const startRecording = async () => {
     try {
@@ -59,6 +72,12 @@ export default function MoodEntry() {
 
   const saveMoodEntry = async (text: string, tags: string[]) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (!user) {
@@ -75,8 +94,8 @@ export default function MoodEntry() {
 
       if (error) throw error;
     } catch (error) {
-      toast.error('Failed to save entry');
-      console.error(error);
+      console.error('Error saving mood entry:', error);
+      toast.error('Failed to save entry. Please try again.');
     }
   };
 

@@ -5,18 +5,23 @@ export type MoodTag = {
   color: string;
 };
 
-export type MoodEntry = {
+export interface MoodEntry {
   id: string;
   userId: string;
   text: string;
-  audioUrl?: string;
   tags: string[];
   createdAt: string;
-  updatedAt: string;
-};
+}
 
-export type MoodStats = {
-  mostFrequentMoods: { tag: string; count: number }[];
-  moodTrends: { date: string; mood: string; count: number }[];
+export interface MoodStats {
+  mostFrequentMoods: Array<{
+    tag: string;
+    count: number;
+  }>;
+  moodTrends: Array<{
+    date: string;
+    mood: string;
+    count: number;
+  }>;
   totalEntries: number;
-};
+}

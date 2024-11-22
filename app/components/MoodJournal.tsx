@@ -25,11 +25,30 @@ export default function MoodJournal() {
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    setEntries(data || []);
+    if (data) {
+      // Преобразуем данные для соответствия типу MoodEntry
+      const formattedEntries = data.map(entry => ({
+        id: entry.id,
+        userId: entry.user_id,
+        text: entry.text || '',
+        tags: entry.tags || [],
+        createdAt: entry.created_at // Supabase возвращает created_at
+      }));
+      setEntries(formattedEntries);
+    }
   };
 
   const getTagDetails = (tagId: string) => {
     return Object.values(moodTags).flat().find(tag => tag.id === tagId);
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'PPpp');
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return 'Invalid date';
+    }
   };
 
   return (
@@ -40,7 +59,7 @@ export default function MoodJournal() {
           <div key={entry.id} className="mb-4 p-4 border rounded-lg">
             <div className="flex justify-between items-start mb-2">
               <span className="text-sm text-gray-500">
-                {format(new Date(entry.createdAt), 'PPpp')}
+                {formatDate(entry.createdAt)}
               </span>
             </div>
             {entry.text && (
