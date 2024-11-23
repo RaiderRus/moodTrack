@@ -8,6 +8,17 @@ import { moodTags } from '../config/mood-tags';
 import { supabase } from '../lib/supabase';
 import type { MoodStats } from '../types/mood';
 
+type MoodTagCategory = keyof typeof moodTags;
+type MoodTagId = (typeof moodTags)[MoodTagCategory][number]['id'];
+
+interface DBMoodEntry {
+  id: string;
+  user_id: string;
+  text: string;
+  tags: string[];
+  created_at: string;
+}
+
 export default function MoodStatistics() {
   const [stats, setStats] = useState<MoodStats | null>(null);
 
@@ -28,8 +39,8 @@ export default function MoodStatistics() {
 
     // Calculate mood frequencies
     const tagCounts: Record<string, number> = {};
-    entries.forEach(entry => {
-      entry.tags.forEach(tag => {
+    (entries as DBMoodEntry[]).forEach((entry) => {
+      entry.tags.forEach((tag) => {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
       });
     });
@@ -43,11 +54,11 @@ export default function MoodStatistics() {
     const last7Days = new Date();
     last7Days.setDate(last7Days.getDate() - 7);
 
-    const moodTrends = entries
+    const moodTrends = (entries as DBMoodEntry[])
       .filter(entry => new Date(entry.created_at) >= last7Days)
-      .reduce((acc: any[], entry) => {
+      .reduce((acc: Array<{ date: string; mood: string; count: number }>, entry) => {
         const date = new Date(entry.created_at).toISOString().split('T')[0];
-        entry.tags.forEach(tag => {
+        entry.tags.forEach((tag) => {
           acc.push({ date, mood: tag, count: 1 });
         });
         return acc;
