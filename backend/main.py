@@ -56,10 +56,12 @@ async def transcribe_audio(file: UploadFile = File(...)):
         logger.info(f"Получен файл для транскрибации: {file.filename}")
         content = await file.read()
         
-        with open("temp_audio.webm", "wb") as f:
+        temp_file_path = f"/tmp/{file.filename}"
+        
+        with open(temp_file_path, "wb") as f:
             f.write(content)
         
-        with open("temp_audio.webm", "rb") as audio_file:
+        with open(temp_file_path, "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file,
@@ -72,8 +74,8 @@ async def transcribe_audio(file: UploadFile = File(...)):
         logger.error(f"Ошибка при транскрибации: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if os.path.exists("temp_audio.webm"):
-            os.remove("temp_audio.webm")
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
