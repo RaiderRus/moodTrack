@@ -98,7 +98,7 @@ export default function MoodEntry() {
         return;
       }
 
-      console.log('Saving entry:', { text, tags: selectedTags }); // Отладочный лог
+      console.log('Saving entry:', { text, tags: selectedTags });
 
       const { data, error } = await supabase
         .from('mood_entries')
@@ -113,11 +113,19 @@ export default function MoodEntry() {
 
       if (error) throw error;
 
-      console.log('Entry saved:', data); // Отладочный лог
-      addEntry(data);
+      console.log('Entry saved:', data);
+
+      const newEntry = {
+        id: data.id,
+        userId: data.user_id,
+        text: data.text || '',
+        tags: data.tags || [],
+        createdAt: data.created_at
+      };
+
+      addEntry(newEntry);
       toast.success('Запись сохранена!');
 
-      // Очищаем форму после успешног�� сохранения
       setText('');
       setSelectedTags([]);
     } catch (error) {
@@ -149,12 +157,10 @@ export default function MoodEntry() {
     setIsProcessing(true);
     
     try {
-      // Получаем позицию журнала
       const journalElement = document.getElementById('mood-journal');
       const journalRect = journalElement?.getBoundingClientRect();
       
       if (journalRect) {
-        // Создаем и анимируем клоны тегов
         const tagAnimations = selectedTags.map((tagId) => {
           return new Promise<void>((resolve) => {
             const tagElement = document.querySelector(`[data-tag-id="${tagId}"]`);
@@ -162,7 +168,6 @@ export default function MoodEntry() {
             const tag = getTagById(tagId);
             
             if (tagRect && tag) {
-              // Создаем клон тега
               const clone = document.createElement('div');
               clone.className = `fixed ${tag.color} text-white px-2 py-1 rounded-full text-sm z-50`;
               clone.style.left = `${tagRect.left}px`;
@@ -172,7 +177,6 @@ export default function MoodEntry() {
               clone.textContent = tag.name;
               document.body.appendChild(clone);
 
-              // Анимируем клон
               requestAnimationFrame(() => {
                 clone.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
                 clone.style.transform = `translate(
@@ -192,11 +196,9 @@ export default function MoodEntry() {
           });
         });
 
-        // Ждем завершения всех анимаций
         await Promise.all(tagAnimations);
       }
 
-      // Сохраняем запись
       await saveMoodEntry();
       setText('');
       setSelectedTags([]);
@@ -212,9 +214,9 @@ export default function MoodEntry() {
   const handleTranscribedText = async (text: string) => {
     setIsProcessing(true);
     try {
-      console.log('Starting text analysis...'); // Отладочный лог
+      console.log('Starting text analysis...');
       const tags = await analyzeMoodText(text);
-      console.log('Received tags:', tags); // Отладочный лог
+      console.log('Received tags:', tags);
       setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
       toast.success('Текст проанализирован! Выбраны подходящие теги.');
     } catch (error) {
@@ -263,7 +265,6 @@ export default function MoodEntry() {
         )}
       </div>
 
-      {/* Доступные теги */}
       <div className="space-y-2">
         {Object.entries(moodTags).map(([category, tags]) => (
           <div key={category} className="space-y-1">
@@ -286,7 +287,6 @@ export default function MoodEntry() {
         ))}
       </div>
 
-      {/* Зона выбранных тегов */}
       <AnimatePresence>
         {selectedTags.length > 0 && (
           <motion.div
@@ -311,7 +311,6 @@ export default function MoodEntry() {
                 </Button>
               </div>
               
-              {/* Предварительный просмотр записи */}
               <AnimatePresence>
                 {previewEntry && (
                   <motion.div
@@ -350,7 +349,6 @@ export default function MoodEntry() {
                 )}
               </AnimatePresence>
 
-              {/* Выбранные теги */}
               <div className="flex flex-wrap gap-2">
                 <AnimatePresence>
                   {selectedTags.map((tagId) => {

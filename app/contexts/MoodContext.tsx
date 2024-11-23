@@ -18,7 +18,7 @@ export function MoodProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchEntries();
-
+    
     const channel = supabase
       .channel('mood_entries')
       .on(
