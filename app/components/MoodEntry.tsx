@@ -6,12 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Mic, Send, Loader2, X } from "lucide-react";
 import { moodTags } from '../config/mood-tags';
-import { transcribeAudio, analyzeMoodText } from '../lib/api';
+import { transcribeAudio, analyzeMoodText, getMoodEntries } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import type { MoodTag } from '../types/mood';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMood } from '../contexts/MoodContext';
 
 export default function MoodEntry() {
   const [text, setText] = useState('');
@@ -25,6 +26,7 @@ export default function MoodEntry() {
     isAnimating: boolean;
   } | null>(null);
   const router = useRouter();
+  const { addEntry } = useMood();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -50,11 +52,9 @@ export default function MoodEntry() {
         try {
           const transcription = await transcribeAudio(audioBlob);
           setText(transcription);
-          const tags = await analyzeMoodText(transcription);
-          setSelectedTags(tags);
-          toast.success('Audio processed successfully!');
+          toast.success('Speech transcribed successfully! Click Analyze to process the text.');
         } catch (error) {
-          toast.error('Failed to process audio');
+          toast.error('Failed to transcribe audio');
           console.error(error);
         } finally {
           setIsProcessing(false);
@@ -98,30 +98,31 @@ export default function MoodEntry() {
         return;
       }
 
-      const newEntry = {
-        user_id: user.id,
-        text,
-        tags: selectedTags,
-        created_at: new Date().toISOString(),
-      };
+      console.log('Saving entry:', { text, tags: selectedTags }); // Отладочный лог
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('mood_entries')
-        .insert(newEntry)
+        .insert({
+          user_id: user.id,
+          text,
+          tags: selectedTags,
+          created_at: new Date().toISOString(),
+        })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Вызываем событие обновления
-      const event = new CustomEvent('moodEntryAdded');
-      window.dispatchEvent(event);
+      console.log('Entry saved:', data); // Отладочный лог
+      addEntry(data);
+      toast.success('Запись сохранена!');
 
-      toast.success('Mood entry saved!');
+      // Очищаем форму после успешног�� сохранения
+      setText('');
+      setSelectedTags([]);
     } catch (error) {
       console.error('Error saving mood entry:', error);
-      toast.error('Failed to save entry. Please try again.');
-      throw error;
+      toast.error('Не удалось сохранить запись. Попробуйте снова.');
     }
   };
 
@@ -145,39 +146,80 @@ export default function MoodEntry() {
 
   const handleSubmit = async () => {
     if (!text.trim() && selectedTags.length === 0) return;
-    
-    // Создаем предварительный просмотр записи
-    setPreviewEntry({
-      text,
-      tags: selectedTags,
-      isAnimating: true
-    });
-
-    // Уменьшаем задержку появления до 200мс
-    await new Promise(resolve => setTimeout(resolve, 200));
-
     setIsProcessing(true);
     
     try {
-      if (text.trim()) {
-        const tags = await analyzeMoodText(text);
-        setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+      // Получаем позицию журнала
+      const journalElement = document.getElementById('mood-journal');
+      const journalRect = journalElement?.getBoundingClientRect();
+      
+      if (journalRect) {
+        // Создаем и анимируем клоны тегов
+        const tagAnimations = selectedTags.map((tagId) => {
+          return new Promise<void>((resolve) => {
+            const tagElement = document.querySelector(`[data-tag-id="${tagId}"]`);
+            const tagRect = tagElement?.getBoundingClientRect();
+            const tag = getTagById(tagId);
+            
+            if (tagRect && tag) {
+              // Создаем клон тега
+              const clone = document.createElement('div');
+              clone.className = `fixed ${tag.color} text-white px-2 py-1 rounded-full text-sm z-50`;
+              clone.style.left = `${tagRect.left}px`;
+              clone.style.top = `${tagRect.top}px`;
+              clone.style.width = `${tagRect.width}px`;
+              clone.style.height = `${tagRect.height}px`;
+              clone.textContent = tag.name;
+              document.body.appendChild(clone);
+
+              // Анимируем клон
+              requestAnimationFrame(() => {
+                clone.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                clone.style.transform = `translate(
+                  ${journalRect.left - tagRect.left + 20}px,
+                  ${journalRect.top - tagRect.top + 20}px
+                ) scale(0.8)`;
+                clone.style.opacity = '0';
+
+                setTimeout(() => {
+                  document.body.removeChild(clone);
+                  resolve();
+                }, 500);
+              });
+            } else {
+              resolve();
+            }
+          });
+        });
+
+        // Ждем завершения всех анимаций
+        await Promise.all(tagAnimations);
       }
 
-      // Запускаем анимацию перемещения
-      setPreviewEntry(prev => prev ? { ...prev, isAnimating: false } : null);
-
-      // Уменьшаем задержку перемещения до 300мс
-      await new Promise(resolve => setTimeout(resolve, 300));
-
+      // Сохраняем запись
       await saveMoodEntry();
       setText('');
       setSelectedTags([]);
-      setPreviewEntry(null);
+
     } catch (error) {
+      console.error('Error:', error);
       toast.error('Failed to save entry');
-      console.error(error);
-      setPreviewEntry(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleTranscribedText = async (text: string) => {
+    setIsProcessing(true);
+    try {
+      console.log('Starting text analysis...'); // Отладочный лог
+      const tags = await analyzeMoodText(text);
+      console.log('Received tags:', tags); // Отладочный лог
+      setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+      toast.success('Текст проанализирован! Выбраны подходящие теги.');
+    } catch (error) {
+      console.error('Failed to analyze text:', error);
+      toast.error('Не удалось проанализировать текст');
     } finally {
       setIsProcessing(false);
     }
@@ -198,6 +240,27 @@ export default function MoodEntry() {
         >
           <Mic className="h-4 w-4" />
         </Button>
+        {text && !isRecording && (
+          <Button
+            onClick={async () => {
+              setIsProcessing(true);
+              try {
+                const tags = await analyzeMoodText(text);
+                setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+                toast.success('Text analyzed successfully!');
+              } catch (error) {
+                toast.error('Failed to analyze text');
+                console.error(error);
+              } finally {
+                setIsProcessing(false);
+              }
+            }}
+            disabled={isProcessing}
+            variant="outline"
+          >
+            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Analyze'}
+          </Button>
+        )}
       </div>
 
       {/* Доступные теги */}

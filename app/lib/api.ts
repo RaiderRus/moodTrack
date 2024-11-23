@@ -1,3 +1,5 @@
+import { supabase } from '@/app/lib/supabaseClient';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
@@ -58,4 +60,19 @@ export async function checkBackendHealth(): Promise<boolean> {
     console.error('Backend health check failed:', error);
     return false;
   }
+}
+
+export async function getMoodEntries() {
+  const { data, error } = await supabase
+    .from('mood_entries')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching entries:', error);
+    return [];
+  }
+
+  console.log('Fetched entries:', data); // Отладочный лог
+  return data;
 }

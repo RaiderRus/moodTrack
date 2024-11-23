@@ -1,8 +1,9 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List
-import openai
+from openai import OpenAI
 import os
 import logging
 from dotenv import load_dotenv
@@ -16,21 +17,22 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Расширяем CORS настройки
+# Обновляем CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    max_age=3600,
 )
 
 # Проверяем наличие API ключа
 if not os.getenv("OPENAI_API_KEY"):
     raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Инициализируем клиент OpenAI
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 class TextAnalysisRequest(BaseModel):
     text: str
@@ -51,20 +53,24 @@ async def health_check():
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     try:
+        logger.info(f"Получен файл для транскрибации: {file.filename}")
         content = await file.read()
         
         with open("temp_audio.webm", "wb") as f:
             f.write(content)
         
         with open("temp_audio.webm", "rb") as audio_file:
-            transcript = openai.Audio.transcribe(
-                "whisper-1",
-                audio_file
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
             )
-        return {"text": transcript["text"]}
+            
+        logger.info("Транскрибация успешно завершена")
+        return JSONResponse(content={"text": transcript})
     except Exception as e:
-        print(f"Error in transcribe_audio: {e}")
-        raise
+        logger.error(f"Ошибка при транскрибации: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists("temp_audio.webm"):
             os.remove("temp_audio.webm")
@@ -72,7 +78,7 @@ async def transcribe_audio(file: UploadFile = File(...)):
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
@@ -93,8 +99,8 @@ async def analyze_text(request: TextAnalysisRequest):
         tags = eval(response.choices[0].message.content)
         return TextAnalysisResponse(tags=tags)
     except Exception as e:
-        print(f"Error in analyze_text: {e}")
-        raise
+        logger.error(f"Error in analyze_text: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

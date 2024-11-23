@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useMood } from '../contexts/MoodContext';
 
 type MoodTagCategory = keyof typeof moodTags;
 type MoodTagId = (typeof moodTags)[MoodTagCategory][number]['id'];
@@ -33,9 +34,8 @@ type MoodEntryWithTypedTags = Omit<MoodEntry, 'tags'> & {
 };
 
 export default function MoodJournal() {
-  const [entries, setEntries] = useState<MoodEntryWithTypedTags[]>([]);
+  const { entries: rawEntries, newEntryId } = useMood();
   const [isExpanded, setIsExpanded] = useState(true);
-  const [newEntryId, setNewEntryId] = useState<string | null>(null);
   const [viewType, setViewType] = useState<JournalViewType>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filters, setFilters] = useState<FilterType>({
@@ -43,62 +43,18 @@ export default function MoodJournal() {
     tags: [],
     category: null
   });
-  const [filteredEntries, setFilteredEntries] = useState<MoodEntryWithTypedTags[]>([]);
 
-  useEffect(() => {
-    fetchEntries();
-    
-    // Create and subscribe to channel
-    const channel = supabase
-      .channel('mood_entries')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'mood_entries',
-          filter: `user_id=eq.${supabase.auth.getUser().then(({ data }) => data.user?.id)}`
-        },
-        (payload) => {
-          console.log('New entry:', payload); // for debugging
-          const newEntry = {
-            id: payload.new.id,
-            userId: payload.new.user_id,
-            text: payload.new.text || '',
-            tags: payload.new.tags || [],
-            createdAt: payload.new.created_at
-          };
-          
-          // Add new entry to the beginning of the list
-          setEntries(prev => [newEntry, ...prev]);
-          setNewEntryId(newEntry.id);
-          
-          // Reset newEntryId after one second
-          setTimeout(() => setNewEntryId(null), 1000);
-        }
+  const entries = useMemo(() => 
+    rawEntries.map(entry => ({
+      ...entry,
+      tags: entry.tags.filter((tag): tag is MoodTagId => 
+        Object.values(moodTags).flat().some(moodTag => moodTag.id === tag)
       )
-      .subscribe((status) => {
-        console.log('Subscription status:', status); // for debugging
-      });
+    })) as MoodEntryWithTypedTags[],
+    [rawEntries]
+  );
 
-    // Unsubscribe on unmount
-    return () => {
-      channel.unsubscribe();
-    };
-  }, []); // Empty dependencies array
-
-  useEffect(() => {
-    const handleNewEntry = () => {
-      fetchEntries();
-    };
-
-    window.addEventListener('moodEntryAdded', handleNewEntry);
-    return () => {
-      window.removeEventListener('moodEntryAdded', handleNewEntry);
-    };
-  }, []);
-
-  useEffect(() => {
+  const filteredEntries = useMemo(() => {
     let filtered = [...entries];
 
     if (filters.date) {
@@ -121,42 +77,19 @@ export default function MoodJournal() {
       );
     }
 
-    setFilteredEntries(filtered);
-    
-    console.log('Filters:', filters);
-    console.log('Filtered entries:', filtered);
+    return filtered;
   }, [entries, filters]);
-
-  const fetchEntries = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data } = await supabase
-      .from('mood_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (data) {
-      const formattedEntries = data.map(entry => ({
-        id: entry.id,
-        userId: entry.user_id,
-        text: entry.text || '',
-        tags: (entry.tags || []) as MoodTagId[],
-        createdAt: entry.created_at
-      }));
-      setEntries(formattedEntries);
-      setFilteredEntries(formattedEntries);
-    }
-  };
 
   const getTagDetails = (tagId: MoodTagId) => {
     return Object.values(moodTags).flat().find(tag => tag.id === tagId);
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
     try {
-      return format(new Date(dateString), 'PPpp');
+      if (!dateString) return 'No date';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      return `${format(date, 'PP')} ${format(date, 'HH:mm')}`;
     } catch (error) {
       console.error('Error formatting date:', dateString, error);
       return 'Invalid date';
@@ -253,14 +186,22 @@ export default function MoodJournal() {
           <motion.div
             key={entry.id}
             layout
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={newEntryId === entry.id ? { 
+              opacity: 0,
+              y: -20,
+              scale: 0.8
+            } : { opacity: 1 }}
+            animate={{ 
+              opacity: 1,
+              y: 0,
+              scale: 1
+            }}
             transition={{
               type: "spring",
               stiffness: 500,
               damping: 30,
               mass: 1,
+              delay: newEntryId === entry.id ? 0.3 : 0
             }}
             className="mb-4"
           >
@@ -271,7 +212,7 @@ export default function MoodJournal() {
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-sm text-gray-500">
-                  {formatDate(entry.createdAt)}
+                  {entry.createdAt ? formatDate(entry.createdAt) : 'No date'}
                 </span>
               </div>
               {entry.text && (

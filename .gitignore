@@ -28,6 +28,7 @@ yarn-error.log*
 .env*.local
 /.bolt/
 /.venv/
+/backend/.env
 
 # vercel
 .vercel
