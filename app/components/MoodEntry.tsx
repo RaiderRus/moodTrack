@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import type { MoodTag } from '../types/mood';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMood } from '../contexts/MoodContext';
+import { cn } from '@/lib/utils';
 
 export default function MoodEntry() {
   const [text, setText] = useState('');
@@ -236,12 +237,6 @@ export default function MoodEntry() {
           placeholder="How are you feeling?"
           disabled={isProcessing}
         />
-        <Button
-          onClick={isRecording ? stopRecording : startRecording}
-          variant={isRecording ? "destructive" : "default"}
-        >
-          <Mic className="h-4 w-4" />
-        </Button>
         {text && !isRecording && (
           <Button
             onClick={async () => {
@@ -260,9 +255,26 @@ export default function MoodEntry() {
             disabled={isProcessing}
             variant="outline"
           >
-            {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Analyze'}
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         )}
+        <Button
+          onClick={isRecording ? stopRecording : startRecording}
+          variant={isRecording ? "destructive" : "default"}
+          className="relative"
+        >
+          <Mic className={cn(
+            "h-4 w-4",
+            !isRecording && "animate-pulse"
+          )} />
+          {!isRecording && (
+            <span className="absolute -inset-1 animate-ping rounded-full bg-primary opacity-20" />
+          )}
+        </Button>
       </div>
 
       <div className="space-y-2">

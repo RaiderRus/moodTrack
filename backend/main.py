@@ -7,7 +7,6 @@ from openai import OpenAI
 import os
 import logging
 from dotenv import load_dotenv
-import subprocess
 
 # Загружаем переменные окружения из .env файла
 load_dotenv()
@@ -51,33 +50,16 @@ async def health_check():
     logger.info("Health check endpoint called")
     return {"status": "ok"}
 
-def convert_to_mp3(input_path, output_path):
-    command = [
-        'ffmpeg',
-        '-i', input_path,
-        '-f', 'mp3',
-        '-ab', '192000',
-        '-vn',
-        output_path
-    ]
-    subprocess.run(command, check=True)
-
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     try:
         logger.info(f"Получен файл для транскрибации: {file.filename}")
         content = await file.read()
         
-        temp_input_path = f"/tmp/{file.filename}"
-        temp_output_path = f"/tmp/converted_audio.mp3"
-        
-        with open(temp_input_path, "wb") as f:
+        with open("temp_audio.webm", "wb") as f:
             f.write(content)
         
-        # Конвертация в mp3
-        convert_to_mp3(temp_input_path, temp_output_path)
-        
-        with open(temp_output_path, "rb") as audio_file:
+        with open("temp_audio.webm", "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file,
@@ -90,9 +72,8 @@ async def transcribe_audio(file: UploadFile = File(...)):
         logger.error(f"Ошибка при транскрибации: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        for path in [temp_input_path, temp_output_path]:
-            if os.path.exists(path):
-                os.remove(path)
+        if os.path.exists("temp_audio.webm"):
+            os.remove("temp_audio.webm")
 
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
