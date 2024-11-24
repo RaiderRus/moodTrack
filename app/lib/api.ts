@@ -1,10 +1,13 @@
 import { supabase } from '@/app/lib/supabaseClient';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const isDevelopment = process.env.NODE_ENV === 'development';
+const API_URL = isDevelopment 
+  ? 'http://localhost:8000'
+  : process.env.NEXT_PUBLIC_API_URL || 'https://mood-track-orpin.vercel.app';
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   try {
-    console.log('Sending audio to:', `${API_URL}/api/transcribe`);
+    console.log('Sending request to:', `${API_URL}/api/transcribe`);
     const formData = new FormData();
     formData.append('file', audioBlob);
 
@@ -14,7 +17,6 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     });
 
     if (!response.ok) {
-      console.error('Transcribe error response:', response.status, await response.text());
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
@@ -28,7 +30,7 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 
 export async function analyzeMoodText(text: string): Promise<string[]> {
   try {
-    console.log('Sending text for analysis:', text);
+    console.log('Sending request to:', `${API_URL}/api/analyze`);
     const response = await fetch(`${API_URL}/api/analyze`, {
       method: 'POST',
       headers: {
@@ -38,7 +40,6 @@ export async function analyzeMoodText(text: string): Promise<string[]> {
     });
 
     if (!response.ok) {
-      console.error('Analyze error response:', response.status, await response.text());
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
