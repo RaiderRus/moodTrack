@@ -80,3 +80,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Обновленные стили для табов */
+[data-state="active"][role="tab"] {
+  @apply bg-primary text-primary-foreground font-semibold;
+  transform: none !important;
+}
+
+[role="tab"] {
+  @apply transition-colors duration-200;
+  transform: none !important;
+}
+
+[role="tab"]:hover:not([data-state="active"]) {
+  @apply bg-muted;
+}
+
+[role="tablist"] {
+  @apply bg-card border rounded-lg;
+}

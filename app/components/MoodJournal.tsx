@@ -33,7 +33,11 @@ type MoodEntryWithTypedTags = Omit<MoodEntry, 'tags'> & {
   tags: MoodTagId[];
 };
 
-export default function MoodJournal() {
+interface MoodJournalProps {
+  hideExpandButton?: boolean;
+}
+
+export default function MoodJournal({ hideExpandButton = false }: MoodJournalProps) {
   const { entries: rawEntries, newEntryId } = useMood();
   const [isExpanded, setIsExpanded] = useState(true);
   const [viewType, setViewType] = useState<JournalViewType>('list');
@@ -333,13 +337,16 @@ export default function MoodJournal() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          {isExpanded ? <ChevronUp /> : <ChevronDown />}
-        </Button>
+        {!hideExpandButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="w-full mb-2"
+          >
+            {isExpanded ? <ChevronUp /> : <ChevronDown />}
+          </Button>
+        )}
       </div>
 
       <motion.div

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Mic, Send, Loader2, X } from "lucide-react";
+import { Mic, Send, Loader2, X, Calendar, Clock } from "lucide-react";
 import { moodTags } from '../config/mood-tags';
 import { transcribeAudio, analyzeMoodText, getMoodEntries } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -14,6 +14,10 @@ import type { MoodTag } from '../types/mood';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMood } from '../contexts/MoodContext';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { TimePickerDemo } from "../components/ui/time-picker";
 
 export default function MoodEntry() {
   const [text, setText] = useState('');
@@ -28,6 +32,8 @@ export default function MoodEntry() {
   } | null>(null);
   const router = useRouter();
   const { addEntry } = useMood();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -107,7 +113,7 @@ export default function MoodEntry() {
           user_id: user.id,
           text,
           tags: selectedTags,
-          created_at: new Date().toISOString(),
+          created_at: selectedDate.toISOString(),
         })
         .select()
         .single();
@@ -125,13 +131,13 @@ export default function MoodEntry() {
       };
 
       addEntry(newEntry);
-      toast.success('Запись сохранена!');
+      toast.success('Entry saved!');
 
       setText('');
       setSelectedTags([]);
     } catch (error) {
       console.error('Error saving mood entry:', error);
-      toast.error('Не удалось сохранить запись. Попробуйте снова.');
+      toast.error('Failed to save entry. Please try again.');
     }
   };
 
@@ -219,10 +225,10 @@ export default function MoodEntry() {
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
       setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-      toast.success('Текст проанализирован! Выбраны подходящие теги.');
+      toast.success('Text analyzed successfully!');
     } catch (error) {
       console.error('Failed to analyze text:', error);
-      toast.error('Не удалось проанализировать текст');
+      toast.error('Failed to analyze text');
     } finally {
       setIsProcessing(false);
     }
@@ -391,6 +397,39 @@ export default function MoodEntry() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="flex justify-end gap-2 mt-4">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Calendar className="h-4 w-4 mr-2" />
+              {format(selectedDate, "dd-MM-yy")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <CalendarComponent
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => date && setSelectedDate(date)}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm">
+              {format(selectedDate, "HH:mm")}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-4" align="end">
+            <TimePickerDemo 
+              date={selectedDate} 
+              setDate={setSelectedDate}
+            />
+          </PopoverContent>
+        </Popover>
+      </div>
     </Card>
   );
 }
