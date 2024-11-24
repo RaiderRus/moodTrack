@@ -8,30 +8,28 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# Загружаем переменные окружения из .env файла
-load_dotenv()
-
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+load_dotenv()
+
 app = FastAPI()
 
-# Обновляем CORS настройки
+# CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "https://mood-track-orpin.vercel.app"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    max_age=3600,
 )
 
 # Проверяем наличие API ключа
 if not os.getenv("OPENAI_API_KEY"):
+    logger.error("OPENAI_API_KEY not found in environment variables")
     raise ValueError("OPENAI_API_KEY environment variable is not set")
 
-# Инициализируем клиент OpenAI
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 class TextAnalysisRequest(BaseModel):
@@ -53,7 +51,7 @@ async def health_check():
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     try:
-        logger.info(f"Получен файл для транскрибации: {file.filename}")
+        logger.info(f"Received file for transcription: {file.filename}")
         content = await file.read()
         
         with open("temp_audio.webm", "wb") as f:
@@ -66,10 +64,11 @@ async def transcribe_audio(file: UploadFile = File(...)):
                 response_format="text"
             )
             
-        logger.info("Транскрибация успешно завершена")
+        logger.info(f"Transcription result: {transcript}")
         return JSONResponse(content={"text": transcript})
     except Exception as e:
-        logger.error(f"Ошибка при транскрибации: {str(e)}")
+        logger.error(f"Error in transcribe_audio: {str(e)}")
+        logger.exception(e)
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists("temp_audio.webm"):
@@ -78,28 +77,58 @@ async def transcribe_audio(file: UploadFile = File(...)):
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
     try:
+        logger.info(f"Received text for analysis: {request.text}")
+        
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "system",
-                    "content": """You are a mood analysis expert. Analyze the given text and return relevant mood tags from the following categories:
-                        Emotions: happy, excited, calm, anxious, sad, angry
-                        Activity: work_activity, exercise, social, rest
-                        Contexts: home, work_location, outside
-                        Return only the tag IDs in a JSON array."""
+                    "content": """You are a mood analysis expert. When analyzing text, return ONLY a JSON array of mood tags.
+                        Available tags are:
+                        Emotions: ["happy", "excited", "calm", "anxious", "sad", "angry"]
+                        Activity: ["work_activity", "exercise", "social", "rest"]
+                        Contexts: ["home", "work_location", "outside"]
+                        Example response: ["happy", "social", "home"]"""
                 },
                 {
                     "role": "user",
                     "content": request.text
                 }
-            ]
+            ],
+            temperature=0.7,
+            max_tokens=100
         )
         
-        tags = eval(response.choices[0].message.content)
-        return TextAnalysisResponse(tags=tags)
+        # Логируем полный ответ от OpenAI
+        logger.info(f"Full OpenAI response: {response}")
+        
+        # Получаем текст ответа
+        response_text = response.choices[0].message.content.strip()
+        logger.info(f"Raw response text: {response_text}")
+        
+        try:
+            # Пытаемся преобразовать текст в список
+            import json
+            tags = json.loads(response_text)
+            logger.info(f"Parsed tags: {tags}")
+            
+            # Проверяем, что все теги валидные
+            valid_tags = [
+                "happy", "excited", "calm", "anxious", "sad", "angry",
+                "work_activity", "exercise", "social", "rest",
+                "home", "work_location", "outside"
+            ]
+            tags = [tag for tag in tags if tag in valid_tags]
+            
+            return TextAnalysisResponse(tags=tags)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse OpenAI response as JSON: {e}")
+            raise HTTPException(status_code=500, detail="Failed to parse mood tags")
+            
     except Exception as e:
-        logger.error(f"Error in analyze_text: {e}")
+        logger.error(f"Error in analyze_text: {str(e)}")
+        logger.exception(e)
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
