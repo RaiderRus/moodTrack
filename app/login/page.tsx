@@ -24,11 +24,11 @@ export default function LoginPage() {
       
       if (error) throw error;
       
-      toast.success('Login successful!');
+      toast.success('Вход выполнен успешно!');
       router.push('/');
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Invalid email or password');
+      console.error('Ошибка входа:', error);
+      toast.error('Неверный email или пароль');
     } finally {
       setIsLoading(false);
     }
@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <form onSubmit={handleLogin} className="space-y-4 w-full max-w-md p-8">
-        <h1 className="text-2xl font-bold text-center mb-6">Login</h1>
+        <h1 className="text-2xl font-bold text-center mb-6">Вход</h1>
         <div>
           <label className="block text-sm font-medium mb-2">Email</label>
           <input
@@ -49,7 +49,7 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Password</label>
+          <label className="block text-sm font-medium mb-2">Пароль</label>
           <input
             type="password"
             value={password}
@@ -63,15 +63,15 @@ export default function LoginPage() {
           className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
           disabled={isLoading}
         >
-          {isLoading ? 'Logging in...' : 'Log In'}
+          {isLoading ? 'Вход...' : 'Войти'}
         </button>
         <p className="text-center text-sm text-gray-600">
-          Don&apos;t have an account?{' '}
+          Нет аккаунта?{' '}
           <Link href="/register" className="text-blue-500 hover:text-blue-600">
-            Register
+            Зарегистрироваться
           </Link>
         </p>
       </form>
     </div>
   );
-}
+} 

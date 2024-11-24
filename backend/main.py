@@ -8,7 +8,7 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# Configure logging
+# Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ load_dotenv()
 
 app = FastAPI()
 
-# CORS settings
+# CORS настройки
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "https://mood-track-orpin.vercel.app"],
@@ -25,7 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Check for API key
+# Проверяем наличие API ключа
 if not os.getenv("OPENAI_API_KEY"):
     logger.error("OPENAI_API_KEY not found in environment variables")
     raise ValueError("OPENAI_API_KEY environment variable is not set")
@@ -100,20 +100,20 @@ async def analyze_text(request: TextAnalysisRequest):
             max_tokens=100
         )
         
-        # Log full OpenAI response
+        # Логируем полный ответ от OpenAI
         logger.info(f"Full OpenAI response: {response}")
         
-        # Get response text
+        # Получаем текст ответа
         response_text = response.choices[0].message.content.strip()
         logger.info(f"Raw response text: {response_text}")
         
         try:
-            # Try to parse text as a list
+            # Пытаемся преобразовать текст в список
             import json
             tags = json.loads(response_text)
             logger.info(f"Parsed tags: {tags}")
             
-            # Check that all tags are valid
+            # Проверяем, что все теги валидные
             valid_tags = [
                 "happy", "excited", "calm", "anxious", "sad", "angry",
                 "work_activity", "exercise", "social", "rest",

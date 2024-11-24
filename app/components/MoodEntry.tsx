@@ -131,13 +131,13 @@ export default function MoodEntry() {
       };
 
       addEntry(newEntry);
-      toast.success('Entry saved!');
+      toast.success('Запись сохранена!');
 
       setText('');
       setSelectedTags([]);
     } catch (error) {
       console.error('Error saving mood entry:', error);
-      toast.error('Failed to save entry. Please try again.');
+      toast.error('Не удалось сохранить запись. Попробуйте снова.');
     }
   };
 
@@ -225,10 +225,10 @@ export default function MoodEntry() {
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
       setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-      toast.success('Text analyzed successfully!');
+      toast.success('Текст проанализирован! Выбраны подходящие теги.');
     } catch (error) {
       console.error('Failed to analyze text:', error);
-      toast.error('Failed to analyze text');
+      toast.error('Не удалось проанализировать текст');
     } finally {
       setIsProcessing(false);
     }
