@@ -14,10 +14,17 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const response = await fetch(`${API_URL}/api/transcribe`, {
       method: 'POST',
       body: formData,
+      headers: {
+        'Accept': 'application/json',
+        // Не устанавливаем Content-Type, так как он автоматически устанавливается для FormData
+      },
+      credentials: 'include', // Добавляем поддержку кук
+      mode: 'cors', // Явно указываем режим CORS
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
     const data = await response.json();
