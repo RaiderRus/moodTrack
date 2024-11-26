@@ -77,3 +77,52 @@ export async function getMoodEntries() {
   console.log('Fetched entries:', data); // Отладочный лог
   return data;
 }
+
+export async function saveAudioRecording(audioBlob: Blob, moodEntryId: string): Promise<{ url: string; duration: number }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Создаем уникальное имя файла
+    const fileName = `${user.id}/${moodEntryId}/${Date.now()}.webm`;
+    
+    // Загружаем файл в storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('audio-recordings')
+      .upload(fileName, audioBlob);
+
+    if (uploadError) throw uploadError;
+
+    // Получаем публичный URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('audio-recordings')
+      .getPublicUrl(fileName);
+
+    // Получаем длительность аудио
+    const audioElement = new Audio();
+    audioElement.src = URL.createObjectURL(audioBlob);
+    
+    const duration = await new Promise<number>((resolve) => {
+      audioElement.addEventListener('loadedmetadata', () => {
+        resolve(audioElement.duration);
+      });
+    });
+
+    // Сохраняем информацию в базу данных
+    const { error: dbError } = await supabase
+      .from('audio_recordings')
+      .insert({
+        user_id: user.id,
+        mood_entry_id: moodEntryId,
+        audio_url: publicUrl,
+        duration: Math.round(duration)
+      });
+
+    if (dbError) throw dbError;
+
+    return { url: publicUrl, duration };
+  } catch (error) {
+    console.error('Error saving audio recording:', error);
+    throw error;
+  }
+}

@@ -11,6 +11,8 @@ export interface MoodEntry {
   text: string;
   tags: string[];
   createdAt: string;
+  audioUrl?: string;
+  audioDuration?: number;
 }
 
 export interface MoodStats {

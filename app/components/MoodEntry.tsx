@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Mic, Send, Loader2, X, Calendar, Clock } from "lucide-react";
 import { moodTags } from '../config/mood-tags';
-import { transcribeAudio, analyzeMoodText, getMoodEntries } from '../lib/api';
+import { transcribeAudio, analyzeMoodText, getMoodEntries, saveAudioRecording } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,7 @@ export default function MoodEntry() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [previewEntry, setPreviewEntry] = useState<{
     text: string;
     tags: string[];
@@ -52,10 +53,11 @@ export default function MoodEntry() {
 
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
         setIsProcessing(true);
         try {
-          const transcription = await transcribeAudio(audioBlob);
+          const transcription = await transcribeAudio(blob);
           setText(transcription);
           toast.success('Speech transcribed successfully! Click Analyze to process the text.');
         } catch (error) {
@@ -120,13 +122,24 @@ export default function MoodEntry() {
 
       console.log('Entry saved:', data);
 
-      addEntry({
+      let audioUrl, audioDuration;
+      if (audioBlob) {
+        const audioData = await saveAudioRecording(audioBlob, data.id);
+        audioUrl = audioData.url;
+        audioDuration = audioData.duration;
+      }
+
+      const newEntry = {
         id: data.id,
         userId: data.user_id,
         text: data.text || '',
         tags: data.tags || [],
-        createdAt: data.created_at
-      });
+        createdAt: data.created_at,
+        audioUrl,
+        audioDuration
+      };
+
+      addEntry(newEntry);
       toast.success('Entry saved!');
 
       setText('');

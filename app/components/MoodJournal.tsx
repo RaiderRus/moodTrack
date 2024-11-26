@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useMood } from '../contexts/MoodContext';
+import { AudioPlayer } from './AudioPlayer';
 
 type MoodTagCategory = keyof typeof moodTags;
 type MoodTagId = (typeof moodTags)[MoodTagCategory][number]['id'];
@@ -216,8 +217,11 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
             >
               <div className="flex justify-between items-start mb-2">
                 <span className="text-sm text-gray-500">
-                  {entry.createdAt ? formatDate(entry.createdAt) : 'No date'}
+                  {formatDate(entry.createdAt)}
                 </span>
+                {entry.audioUrl && entry.audioDuration && (
+                  <AudioPlayer url={entry.audioUrl} duration={entry.audioDuration} />
+                )}
               </div>
               {entry.text && (
                 <p className="mb-2">{entry.text}</p>
