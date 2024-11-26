@@ -43,6 +43,7 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
+    --font-playfair: var(--font-playfair);
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -98,4 +99,26 @@
 
 [role="tablist"] {
   @apply bg-card border rounded-lg;
+}
+
+.font-serif {
+  font-family: var(--font-playfair), serif;
+}
+
+/* Добавим анимацию для градиента */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.bg-gradient-animate {
+  background-size: 200% 200%;
+  animation: gradient 15s ease infinite;
 }
