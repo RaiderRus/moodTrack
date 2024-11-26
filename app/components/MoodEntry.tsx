@@ -32,8 +32,6 @@ export default function MoodEntry() {
   } | null>(null);
   const router = useRouter();
   const { addEntry } = useMood();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -113,7 +111,7 @@ export default function MoodEntry() {
           user_id: user.id,
           text,
           tags: selectedTags,
-          created_at: selectedDate.toISOString(),
+          created_at: new Date().toISOString(),
         })
         .select()
         .single();
@@ -122,37 +120,29 @@ export default function MoodEntry() {
 
       console.log('Entry saved:', data);
 
-      const newEntry = {
+      addEntry({
         id: data.id,
         userId: data.user_id,
         text: data.text || '',
         tags: data.tags || [],
         createdAt: data.created_at
-      };
-
-      addEntry(newEntry);
-      toast.success('Запись сохранена!');
+      });
+      toast.success('Entry saved!');
 
       setText('');
       setSelectedTags([]);
     } catch (error) {
       console.error('Error saving mood entry:', error);
-      toast.error('Не удалось сохранить запись. Попробуйте снова.');
+      toast.error('Failed to save entry. Please try again.');
     }
   };
 
-  const handleTagClick = (tagId: string) => {
-    setSelectedTags(prev => {
-      if (prev.includes(tagId)) {
-        return prev.filter(id => id !== tagId);
-      } else {
-        return [...prev, tagId];
-      }
-    });
-  };
-
-  const removeTag = (tagId: string) => {
-    setSelectedTags(prev => prev.filter(id => id !== tagId));
+  const handleTagToggle = (tagId: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId) 
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
   };
 
   const getTagById = (tagId: string) => {
@@ -236,6 +226,74 @@ export default function MoodEntry() {
 
   return (
     <Card className="p-4 space-y-4">
+      <div className="flex items-start gap-4">
+        <div className="flex-grow space-y-4">
+          {Object.entries(moodTags).map(([category, tags]) => (
+            <div key={category} className="space-y-2">
+              <h3 className="text-sm font-medium text-muted-foreground capitalize">
+                {category.replace('_', ' ')}
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag.id}
+                    onClick={() => handleTagToggle(tag.id)}
+                    className={cn(
+                      'px-3 py-1 rounded-full text-sm transition-opacity hover:opacity-90',
+                      tag.color,
+                      'text-white',
+                      selectedTags.includes(tag.id) ? 'ring-2 ring-white/20' : ''
+                    )}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        <button
+          onClick={isRecording ? stopRecording : startRecording}
+          className={cn(
+            'w-16 h-16 rounded-full flex items-center justify-center transition-colors',
+            isRecording 
+              ? 'bg-red-400 hover:bg-red-500 text-white' 
+              : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
+          )}
+        >
+          <Mic className="h-8 w-8" />
+        </button>
+      </div>
+
+      {selectedTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-lg">
+          {selectedTags.map((tagId) => {
+            const tag = Object.values(moodTags)
+              .flat()
+              .find(t => t.id === tagId);
+            return tag ? (
+              <div
+                key={tagId}
+                className={cn(
+                  "px-3 py-1 rounded-full text-sm flex items-center gap-1",
+                  tag.color,
+                  'text-white'
+                )}
+              >
+                {tag.name}
+                <button
+                  className="ml-1 hover:opacity-80 transition-opacity"
+                  onClick={() => handleTagToggle(tagId)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : null;
+          })}
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Input
           value={text}
@@ -268,168 +326,18 @@ export default function MoodEntry() {
             )}
           </Button>
         )}
-        <Button
-          onClick={isRecording ? stopRecording : startRecording}
-          variant={isRecording ? "destructive" : "default"}
-          className="relative"
-        >
-          <Mic className={cn(
-            "h-4 w-4",
-            !isRecording && "animate-pulse"
-          )} />
-          {!isRecording && (
-            <span className="absolute -inset-1 animate-ping rounded-full bg-primary opacity-20" />
-          )}
-        </Button>
       </div>
 
-      <div className="space-y-2">
-        {Object.entries(moodTags).map(([category, tags]) => (
-          <div key={category} className="space-y-1">
-            <h3 className="text-sm font-medium text-gray-700 capitalize">{category}</h3>
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <motion.button
-                  key={tag.id}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`${tag.color} text-white px-3 py-1 rounded-full text-sm
-                    hover:opacity-90 transition-opacity`}
-                  onClick={() => handleTagClick(tag.id)}
-                >
-                  {tag.name}
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {selectedTags.length > 0 && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
+      {(selectedTags.length > 0 || text) && (
+        <div className="flex justify-end">
+          <Button
+            onClick={saveMoodEntry}
+            disabled={isProcessing || (!text && selectedTags.length === 0)}
           >
-            <div className="p-3 bg-gray-50 rounded-lg selected-tags-container">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Selected Moods:</span>
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={isProcessing || (!text.trim() && selectedTags.length === 0)}
-                  size="sm"
-                >
-                  {isProcessing ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              
-              <AnimatePresence>
-                {previewEntry && (
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0, x: 0 }}
-                    animate={{ 
-                      scale: previewEntry.isAnimating ? 1 : 0.8,
-                      opacity: previewEntry.isAnimating ? 1 : 0,
-                      x: previewEntry.isAnimating ? 0 : 500
-                    }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 500,
-                      damping: 25,
-                      duration: 0.3
-                    }}
-                    className="mb-4 p-4 border rounded-lg bg-white shadow-sm"
-                  >
-                    {previewEntry.text && (
-                      <p className="mb-2">{previewEntry.text}</p>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {previewEntry.tags.map((tagId) => {
-                        const tag = getTagById(tagId);
-                        return tag && (
-                          <span
-                            key={tag.id}
-                            className={`${tag.color} text-white px-2 py-1 rounded-full text-sm`}
-                          >
-                            {tag.name}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div className="flex flex-wrap gap-2">
-                <AnimatePresence>
-                  {selectedTags.map((tagId) => {
-                    const tag = getTagById(tagId);
-                    return tag && !previewEntry && (
-                      <motion.div
-                        key={tag.id}
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0, opacity: 0 }}
-                        layout
-                        data-tag-id={tag.id}
-                        className={`${tag.color} text-white px-2 py-1 rounded-full text-sm flex items-center gap-1`}
-                      >
-                        {tag.name}
-                        <button
-                          onClick={() => removeTag(tag.id)}
-                          className="hover:bg-white/20 rounded-full p-0.5"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className="flex justify-end gap-2 mt-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Calendar className="h-4 w-4 mr-2" />
-              {format(selectedDate, "dd-MM-yy")}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="end">
-            <CalendarComponent
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
-
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm">
-              {format(selectedDate, "HH:mm")}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-4" align="end">
-            <TimePickerDemo 
-              date={selectedDate} 
-              setDate={setSelectedDate}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+            Save Entry
+          </Button>
+        </div>
+      )}
     </Card>
   );
 }
