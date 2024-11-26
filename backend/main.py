@@ -7,6 +7,7 @@ from openai import OpenAI
 import os
 import logging
 from dotenv import load_dotenv
+import tempfile
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +20,7 @@ app = FastAPI()
 # CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://mood-track-orpin.vercel.app"],
+    allow_origins=["https://mood-track-orpin.vercel.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,29 +51,33 @@ async def health_check():
 
 @app.post("/api/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
+    temp_file_path = None
     try:
-        logger.info(f"Received file for transcription: {file.filename}")
+        logger.info(f"Получен файл для транскрипции: {file.filename}")
         content = await file.read()
-        
-        with open("temp_audio.webm", "wb") as f:
-            f.write(content)
-        
-        with open("temp_audio.webm", "rb") as audio_file:
+
+        # Создание временного файла
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
+            temp_file.write(content)
+            temp_file_path = temp_file.name
+
+        # Открытие временного файла для чтения
+        with open(temp_file_path, "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
                 file=audio_file,
                 response_format="text"
             )
-            
-        logger.info(f"Transcription result: {transcript}")
+
+        logger.info(f"Результат транскрипции: {transcript}")
         return JSONResponse(content={"text": transcript})
     except Exception as e:
-        logger.error(f"Error in transcribe_audio: {str(e)}")
-        logger.exception(e)
+        logger.error(f"Ошибка при транскрипции: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        if os.path.exists("temp_audio.webm"):
-            os.remove("temp_audio.webm")
+        # Удаление временного файла, если он был создан
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
 
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
