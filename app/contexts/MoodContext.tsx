@@ -37,9 +37,16 @@ export function MoodProvider({ children }: { children: React.ReactNode }) {
             createdAt: payload.new.created_at
           };
           
-          setEntries(prev => [newEntry, ...prev]);
-          setNewEntryId(newEntry.id);
-          setTimeout(() => setNewEntryId(null), 1000);
+          fetchAudioForEntry(newEntry.id).then(audioData => {
+            const entryWithAudio = {
+              ...newEntry,
+              audioUrl: audioData?.audio_url,
+              audioDuration: audioData?.duration
+            };
+            setEntries(prev => [entryWithAudio, ...prev]);
+            setNewEntryId(entryWithAudio.id);
+            setTimeout(() => setNewEntryId(null), 1000);
+          });
         }
       )
       .subscribe();
@@ -49,25 +56,44 @@ export function MoodProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const fetchAudioForEntry = async (entryId: string) => {
+    const { data, error } = await supabase
+      .from('audio_recordings')
+      .select('audio_url, duration')
+      .eq('mood_entry_id', entryId)
+      .single();
+
+    if (error || !data) return null;
+    return data;
+  };
+
   const fetchEntries = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    const { data: moodEntries } = await supabase
       .from('mood_entries')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
-    if (data) {
-      const formattedEntries = data.map(entry => ({
-        id: entry.id,
-        userId: entry.user_id,
-        text: entry.text || '',
-        tags: entry.tags || [],
-        createdAt: entry.created_at
-      }));
-      setEntries(formattedEntries);
+    if (moodEntries) {
+      const entriesWithAudio = await Promise.all(
+        moodEntries.map(async (entry) => {
+          const audioData = await fetchAudioForEntry(entry.id);
+          return {
+            id: entry.id,
+            userId: entry.user_id,
+            text: entry.text || '',
+            tags: entry.tags || [],
+            createdAt: entry.created_at,
+            audioUrl: audioData?.audio_url,
+            audioDuration: audioData?.duration
+          };
+        })
+      );
+      
+      setEntries(entriesWithAudio);
     }
   };
 
