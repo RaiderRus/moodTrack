@@ -92,6 +92,8 @@ export default function MoodEntry() {
     }
 
     try {
+      setIsProcessing(true);
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
@@ -105,9 +107,7 @@ export default function MoodEntry() {
         return;
       }
 
-      console.log('Saving entry:', { text, tags: selectedTags });
-
-      const { data, error } = await supabase
+      const { data: moodData, error: moodError } = await supabase
         .from('mood_entries')
         .insert({
           user_id: user.id,
@@ -118,23 +118,39 @@ export default function MoodEntry() {
         .select()
         .single();
 
-      if (error) throw error;
-
-      console.log('Entry saved:', data);
+      if (moodError) throw moodError;
 
       let audioUrl, audioDuration;
       if (audioBlob) {
-        const audioData = await saveAudioRecording(audioBlob, data.id);
-        audioUrl = audioData.url;
-        audioDuration = audioData.duration;
+        try {
+          const maxRetries = 3;
+          let retryCount = 0;
+          let success = false;
+
+          while (retryCount < maxRetries && !success) {
+            try {
+              const audioData = await saveAudioRecording(audioBlob, moodData.id);
+              audioUrl = audioData.url;
+              audioDuration = audioData.duration;
+              success = true;
+            } catch (error) {
+              retryCount++;
+              if (retryCount === maxRetries) throw error;
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+            }
+          }
+        } catch (audioError) {
+          console.error('Error saving audio recording:', audioError);
+          toast.error('Failed to save audio, but mood entry was saved');
+        }
       }
 
       const newEntry = {
-        id: data.id,
-        userId: data.user_id,
-        text: data.text || '',
-        tags: data.tags || [],
-        createdAt: data.created_at,
+        id: moodData.id,
+        userId: moodData.user_id,
+        text: moodData.text || '',
+        tags: moodData.tags || [],
+        createdAt: moodData.created_at,
         audioUrl,
         audioDuration
       };
@@ -144,9 +160,12 @@ export default function MoodEntry() {
 
       setText('');
       setSelectedTags([]);
+      setAudioBlob(null);
     } catch (error) {
       console.error('Error saving mood entry:', error);
       toast.error('Failed to save entry. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
