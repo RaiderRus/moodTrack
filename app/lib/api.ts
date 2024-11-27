@@ -90,7 +90,17 @@ export async function saveAudioRecording(audioBlob: Blob, moodEntryId: string): 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
-    // Увеличиваем таймаут для загрузки файла
+    // Проверяем тип и размер файла
+    if (!audioBlob.type.includes('audio/')) {
+      throw new Error(`Invalid audio type: ${audioBlob.type}`);
+    }
+
+    console.log('Saving audio blob:', {
+      type: audioBlob.type,
+      size: audioBlob.size,
+      moodEntryId
+    });
+
     const fileName = `${user.id}/${moodEntryId}/${Date.now()}.webm`;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -101,26 +111,28 @@ export async function saveAudioRecording(audioBlob: Blob, moodEntryId: string): 
         contentType: 'audio/webm',
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
 
     const { data: { publicUrl } } = supabase.storage
       .from('audio-recordings')
       .getPublicUrl(fileName);
 
-    // Получаем длительность аудио с таймаутом
-    const duration = await Promise.race([
-      new Promise<number>((resolve, reject) => {
-        const audio = new Audio();
-        audio.src = URL.createObjectURL(audioBlob);
-        audio.addEventListener('loadedmetadata', () => {
-          resolve(audio.duration);
-        });
-        audio.addEventListener('error', reject);
-      }),
-      new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('Audio duration timeout')), 5000)
-      )
-    ]);
+    // Получаем длительность аудио
+    const audio = new Audio();
+    audio.src = URL.createObjectURL(audioBlob);
+    
+    const duration = await new Promise<number>((resolve, reject) => {
+      audio.addEventListener('loadedmetadata', () => {
+        resolve(audio.duration);
+      });
+      audio.addEventListener('error', (e) => {
+        console.error('Audio error:', e);
+        reject(new Error('Failed to get audio duration'));
+      });
+    });
 
     const { error: dbError } = await supabase
       .from('audio_recordings')
@@ -131,7 +143,10 @@ export async function saveAudioRecording(audioBlob: Blob, moodEntryId: string): 
         duration: Math.round(duration)
       });
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error('Database error:', dbError);
+      throw dbError;
+    }
 
     return { url: publicUrl, duration };
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ export default function MoodEntry() {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const audioChunks = useRef<Blob[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [previewEntry, setPreviewEntry] = useState<{
@@ -48,40 +49,38 @@ export default function MoodEntry() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
 
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = async () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        setIsProcessing(true);
-        try {
-          const transcription = await transcribeAudio(blob);
-          setText(transcription);
-          toast.success('Speech transcribed successfully! Click Analyze to process the text.');
-        } catch (error) {
-          toast.error('Failed to transcribe audio');
-          console.error(error);
-        } finally {
-          setIsProcessing(false);
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.current.push(event.data);
         }
       };
 
-      recorder.start();
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks.current, { 
+          type: 'audio/webm;codecs=opus' 
+        });
+        setAudioBlob(audioBlob);
+        audioChunks.current = [];
+      };
+
       setMediaRecorder(recorder);
+      recorder.start();
       setIsRecording(true);
     } catch (error) {
-      toast.error('Failed to start recording');
       console.error('Error starting recording:', error);
+      toast.error('Failed to start recording');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(track => track.stop());
       setIsRecording(false);
-      setMediaRecorder(null);
     }
   };
 
