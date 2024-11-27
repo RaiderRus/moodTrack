@@ -247,10 +247,10 @@ export default function MoodEntry() {
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
       setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-      toast.success('Текст проанализирован! Выбраны подходящие теги.');
+      toast.success('The text has been analyzed! Relevant tags have been selected.');
     } catch (error) {
       console.error('Failed to analyze text:', error);
-      toast.error('Не удалось проанализировать текст');
+      toast.error('Failed to analyze the text.');
     } finally {
       setIsProcessing(false);
     }

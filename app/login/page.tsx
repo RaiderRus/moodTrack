@@ -1,112 +1,77 @@
 "use client";
 
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
+import Link from 'next/link';
 import { toast } from 'sonner';
-import { AuthChangeEvent } from '@supabase/supabase-js';
 
-export default function Login() {
+export default function LoginPage() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
 
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.aud === 'authenticated') {
-        router.push('/');
-      }
-    };
-    checkUser();
-
-    // Слушаем события аутентификации
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      switch (event) {
-        case 'SIGNED_IN':
-          if (session?.user) {
-            router.push('/');
-          }
-          break;
-        case 'SIGNED_UP' as AuthChangeEvent:
-          setShowEmailConfirmation(true);
-          toast.info('Please check your email to confirm your account');
-          break;
-        case 'USER_UPDATED':
-          if (session?.user.email_confirmed_at) {
-            router.push('/');
-          }
-          break;
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router]);
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Login successful!');
+      router.push('/');
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('Invalid email or password, or your email is not confirmed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-6">
-        <h1 className="text-2xl font-bold text-center mb-6">Welcome to Mood Tracker</h1>
-        
-        {showEmailConfirmation && (
-          <div className="mb-6 p-4 bg-blue-50 text-blue-700 rounded-lg">
-            <p className="text-center">
-              Please check your email to confirm your account.
-              <br />
-              You need to verify your email before you can sign in.
-            </p>
-          </div>
-        )}
-
-        <Auth
-          supabaseClient={supabase}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: '#000000',
-                  brandAccent: '#333333',
-                }
-              }
-            }
-          }}
-          localization={{
-            variables: {
-              sign_in: {
-                email_label: 'Email address',
-                password_label: 'Password',
-                button_label: 'Sign in',
-                loading_button_label: 'Signing in...',
-                social_provider_text: 'Sign in with {{provider}}',
-                link_text: "Already have an account? Sign in",
-              },
-              sign_up: {
-                email_label: 'Email address',
-                password_label: 'Create a password',
-                button_label: 'Sign up',
-                loading_button_label: 'Signing up...',
-                social_provider_text: 'Sign up with {{provider}}',
-                link_text: "Don't have an account? Sign up",
-                confirmation_text: 'Check your email for the confirmation link'
-              },
-              forgotten_password: {
-                email_label: 'Email address',
-                button_label: 'Send reset instructions',
-                loading_button_label: 'Sending reset instructions...',
-                link_text: 'Forgot your password?'
-              }
-            },
-          }}
-          theme="dark"
-          providers={[]}
-          redirectTo={`${window.location.origin}/auth/callback`}
-        />
-      </Card>
+    <div className="flex min-h-screen items-center justify-center">
+      <form onSubmit={handleLogin} className="space-y-4 w-full max-w-md p-8">
+        <h1 className="text-2xl font-bold text-center mb-6">Login</h1>
+        <div>
+          <label className="block text-sm font-medium mb-2">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-2">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+          disabled={isLoading}
+        >
+          {isLoading ? 'Logging in...':'Log in'}
+        </button>
+        <p className="text-center text-sm text-gray-600">
+        Don&apos;t have an account?{' '}
+          <Link href="/register" className="text-blue-500 hover:text-blue-600">
+            Register
+          </Link>
+        </p>
+      </form>
     </div>
   );
 } 
