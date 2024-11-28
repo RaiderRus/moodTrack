@@ -58,8 +58,7 @@ export default function MoodEntry() {
         setIsProcessing(true);
         try {
           const transcription = await transcribeAudio(blob);
-          setText(transcription);
-          toast.success('Speech transcribed successfully! Click Analyze to process the text.');
+          await handleTranscribedText(transcription);
         } catch (error) {
           toast.error('Failed to transcribe audio');
           console.error(error);
@@ -244,13 +243,14 @@ export default function MoodEntry() {
     setIsProcessing(true);
     try {
       console.log('Starting text analysis...');
+      setText(text); // Set the transcribed text first
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
       setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-      toast.success('The text has been analyzed! Relevant tags have been selected.');
+      toast.success('Voice recording analyzed! Relevant tags have been selected.');
     } catch (error) {
       console.error('Failed to analyze text:', error);
-      toast.error('Failed to analyze the text.');
+      toast.error('Failed to analyze the recording.');
     } finally {
       setIsProcessing(false);
     }
@@ -334,31 +334,6 @@ export default function MoodEntry() {
             placeholder="How are you feeling?"
             disabled={isProcessing}
           />
-          {text && !isRecording && (
-            <Button
-              onClick={async () => {
-                setIsProcessing(true);
-                try {
-                  const tags = await analyzeMoodText(text);
-                  setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-                  toast.success('Text analyzed successfully!');
-                } catch (error) {
-                  toast.error('Failed to analyze text');
-                  console.error(error);
-                } finally {
-                  setIsProcessing(false);
-                }
-              }}
-              disabled={isProcessing}
-              variant="outline"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          )}
         </div>
 
         {(selectedTags.length > 0 || text) && (
