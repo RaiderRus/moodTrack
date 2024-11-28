@@ -257,119 +257,121 @@ export default function MoodEntry() {
   };
 
   return (
-    <Card className="p-4 space-y-4">
-      <div className="flex items-start gap-4">
-        <div className="flex-grow space-y-4">
-          {Object.entries(moodTags).map(([category, tags]) => (
-            <div key={category} className="space-y-2">
-              <h3 className="text-sm font-medium text-muted-foreground capitalize">
-                {category.replace('_', ' ')}
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <button
-                    key={tag.id}
-                    onClick={() => handleTagToggle(tag.id)}
-                    className={cn(
-                      'px-3 py-1 rounded-full text-sm transition-opacity hover:opacity-90',
-                      tag.color,
-                      'text-white',
-                      selectedTags.includes(tag.id) ? 'ring-2 ring-white/20' : ''
-                    )}
-                  >
-                    {tag.name}
-                  </button>
-                ))}
+    <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+      <Card className="p-4 space-y-4 w-full max-w-2xl bg-transparent border-0 shadow-none">
+        <div className="flex items-start gap-4">
+          <div className="flex-grow space-y-4">
+            {Object.entries(moodTags).map(([category, tags]) => (
+              <div key={category} className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground capitalize">
+                  {category.replace('_', ' ')}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      onClick={() => handleTagToggle(tag.id)}
+                      className={cn(
+                        'px-3 py-1 rounded-full text-sm transition-opacity hover:opacity-90',
+                        tag.color,
+                        'text-white',
+                        selectedTags.includes(tag.id) ? 'ring-2 ring-white/20' : ''
+                      )}
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-        
-        <button
-          onClick={isRecording ? stopRecording : startRecording}
-          className={cn(
-            'w-16 h-16 rounded-full flex items-center justify-center transition-colors',
-            isRecording 
-              ? 'bg-red-400 hover:bg-red-500 text-white' 
-              : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
-          )}
-        >
-          <Mic className="h-8 w-8" />
-        </button>
-      </div>
-
-      {selectedTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-lg">
-          {selectedTags.map((tagId) => {
-            const tag = Object.values(moodTags)
-              .flat()
-              .find(t => t.id === tagId);
-            return tag ? (
-              <div
-                key={tagId}
-                className={cn(
-                  "px-3 py-1 rounded-full text-sm flex items-center gap-1",
-                  tag.color,
-                  'text-white'
-                )}
-              >
-                {tag.name}
-                <button
-                  className="ml-1 hover:opacity-80 transition-opacity"
-                  onClick={() => handleTagToggle(tagId)}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ) : null;
-          })}
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="How are you feeling?"
-          disabled={isProcessing}
-        />
-        {text && !isRecording && (
-          <Button
-            onClick={async () => {
-              setIsProcessing(true);
-              try {
-                const tags = await analyzeMoodText(text);
-                setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-                toast.success('Text analyzed successfully!');
-              } catch (error) {
-                toast.error('Failed to analyze text');
-                console.error(error);
-              } finally {
-                setIsProcessing(false);
-              }
-            }}
-            disabled={isProcessing}
-            variant="outline"
-          >
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
+            ))}
+          </div>
+          
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            className={cn(
+              'w-16 h-16 rounded-full flex items-center justify-center transition-colors',
+              isRecording 
+                ? 'bg-red-400 hover:bg-red-500 text-white' 
+                : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
             )}
-          </Button>
-        )}
-      </div>
-
-      {(selectedTags.length > 0 || text) && (
-        <div className="flex justify-end">
-          <Button
-            onClick={saveMoodEntry}
-            disabled={isProcessing || (!text && selectedTags.length === 0)}
           >
-            Save Entry
-          </Button>
+            <Mic className="h-8 w-8" />
+          </button>
         </div>
-      )}
-    </Card>
+
+        {selectedTags.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-lg">
+            {selectedTags.map((tagId) => {
+              const tag = Object.values(moodTags)
+                .flat()
+                .find(t => t.id === tagId);
+              return tag ? (
+                <div
+                  key={tagId}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-sm flex items-center gap-1",
+                    tag.color,
+                    'text-white'
+                  )}
+                >
+                  {tag.name}
+                  <button
+                    className="ml-1 hover:opacity-80 transition-opacity"
+                    onClick={() => handleTagToggle(tagId)}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : null;
+            })}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="How are you feeling?"
+            disabled={isProcessing}
+          />
+          {text && !isRecording && (
+            <Button
+              onClick={async () => {
+                setIsProcessing(true);
+                try {
+                  const tags = await analyzeMoodText(text);
+                  setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+                  toast.success('Text analyzed successfully!');
+                } catch (error) {
+                  toast.error('Failed to analyze text');
+                  console.error(error);
+                } finally {
+                  setIsProcessing(false);
+                }
+              }}
+              disabled={isProcessing}
+              variant="outline"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          )}
+        </div>
+
+        {(selectedTags.length > 0 || text) && (
+          <div className="flex justify-end">
+            <Button
+              onClick={saveMoodEntry}
+              disabled={isProcessing || (!text && selectedTags.length === 0)}
+            >
+              Save Entry
+            </Button>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }
