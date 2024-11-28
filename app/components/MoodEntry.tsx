@@ -259,7 +259,7 @@ export default function MoodEntry() {
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
       <Card className="p-4 space-y-4 w-full max-w-2xl bg-transparent border-0 shadow-none">
-        <div className="flex items-start gap-4">
+        <div className="relative flex items-start gap-4">
           <div className="flex-grow space-y-4">
             {Object.entries(moodTags).map(([category, tags]) => (
               <div key={category} className="space-y-2">
@@ -289,7 +289,7 @@ export default function MoodEntry() {
           <button
             onClick={isRecording ? stopRecording : startRecording}
             className={cn(
-              'w-16 h-16 rounded-full flex items-center justify-center transition-colors',
+              'absolute right-0 top-[50%] -translate-y-[50%] w-16 h-16 rounded-full flex items-center justify-center transition-colors',
               isRecording 
                 ? 'bg-red-400 hover:bg-red-500 text-white' 
                 : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
