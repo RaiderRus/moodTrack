@@ -40,7 +40,7 @@ interface MoodJournalProps {
   hideExpandButton?: boolean;
 }
 
-export default function MoodJournal() {
+export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
   const { entries: rawEntries, newEntryId } = useMood();
   const [viewType, setViewType] = useState<JournalViewType>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());

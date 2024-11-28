@@ -5,6 +5,10 @@ import MoodJournal from "./MoodJournal";
 import MoodStats from "./MoodStats";
 import { Card } from "@/components/ui/card";
 
+interface MoodJournalProps {
+  hideExpandButton?: boolean;
+}
+
 export default function TabsContainer() {
   return (
     <div className="max-w-[600px] mx-auto">
@@ -26,7 +30,7 @@ export default function TabsContainer() {
           </TabsList>
           <div className="mt-4">
             <TabsContent value="journal">
-              <MoodJournal hideExpandButton={true} />
+              <MoodJournal hideExpandButton />
             </TabsContent>
             <TabsContent value="statistics">
               <MoodStats />
@@ -36,4 +40,4 @@ export default function TabsContainer() {
       </Card>
     </div>
   );
-} 
+}
