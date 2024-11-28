@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/select";
 import { useMood } from '../contexts/MoodContext';
 import { AudioPlayer } from './AudioPlayer';
+import { playfair } from '../lib/fonts';
+import { cn } from '../lib/utils';
 
 type MoodTagCategory = keyof typeof moodTags;
 type MoodTagId = (typeof moodTags)[MoodTagCategory][number]['id'];
@@ -38,9 +40,8 @@ interface MoodJournalProps {
   hideExpandButton?: boolean;
 }
 
-export default function MoodJournal({ hideExpandButton = false }: MoodJournalProps) {
+export default function MoodJournal() {
   const { entries: rawEntries, newEntryId } = useMood();
-  const [isExpanded, setIsExpanded] = useState(true);
   const [viewType, setViewType] = useState<JournalViewType>('list');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filters, setFilters] = useState<FilterType>({
@@ -127,13 +128,13 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
           }))
         }
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className={cn("w-[180px]", playfair.className)}>
           <SelectValue placeholder="Filter by category" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All categories</SelectItem>
+          <SelectItem value="all" className={playfair.className}>All categories</SelectItem>
           {(Object.keys(moodTags) as MoodTagCategory[]).map(category => (
-            <SelectItem key={category} value={category}>
+            <SelectItem key={category} value={category} className={playfair.className}>
               {category.charAt(0).toUpperCase() + category.slice(1)}
             </SelectItem>
           ))}
@@ -149,16 +150,18 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
           }))
         }
       >
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className={cn("w-[180px]", playfair.className)}>
           <SelectValue placeholder="Filter by tag" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All tags</SelectItem>
-          {Object.values(moodTags).flat().map(tag => (
-            <SelectItem key={tag.id} value={tag.id}>
-              {tag.name}
-            </SelectItem>
-          ))}
+          <SelectItem value="all" className={playfair.className}>All tags</SelectItem>
+          {Object.entries(moodTags).flatMap(([category, tags]) => 
+            tags.map(tag => (
+              <SelectItem key={tag.id} value={tag.id} className={playfair.className}>
+                {tag.name}
+              </SelectItem>
+            ))
+          )}
         </SelectContent>
       </Select>
 
@@ -167,6 +170,7 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
           variant="outline"
           size="sm"
           onClick={() => setFilters(prev => ({ ...prev, date: null }))}
+          className={playfair.className}
         >
           {format(filters.date, 'PP')} ✕
         </Button>
@@ -177,6 +181,7 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
           variant="ghost"
           size="sm"
           onClick={() => setFilters({ date: null, tags: [], category: null })}
+          className={playfair.className}
         >
           Clear filters
         </Button>
@@ -284,33 +289,40 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
             return (
               <motion.div
                 key={day.toISOString()}
-                className={`aspect-square p-2 border rounded-lg cursor-pointer
+                className={`relative aspect-square border rounded-lg cursor-pointer overflow-hidden
                   ${dayEntries.length > 0 ? 'bg-gray-50 hover:bg-gray-100' : 'bg-white hover:bg-gray-50'}
                   ${isSameDay(day, filters.date || new Date()) ? 'ring-2 ring-blue-500' : ''}
                 `}
-                whileHover={{ scale: 1.05 }}
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "tween", duration: 0.15 }}
                 onClick={() => handleDateClick(day)}
               >
-                <div className="text-sm font-medium mb-1">
-                  {format(day, 'd')}
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {dayEntries.slice(0, 3).map(entry => (
-                    <div
-                      key={entry.id}
-                      className="w-2 h-2 rounded-full"
-                      style={{
-                        backgroundColor: entry.tags[0] 
-                          ? getTagDetails(entry.tags[0])?.color.replace('bg-', '') 
-                          : '#gray-300'
-                      }}
-                    />
-                  ))}
-                  {dayEntries.length > 3 && (
-                    <div className="text-xs text-gray-500">
-                      +{dayEntries.length - 3}
+                <div className="absolute inset-0 flex flex-col">
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="text-sm font-medium">
+                      {format(day, 'd')}
                     </div>
-                  )}
+                  </div>
+                  <div className="h-7 px-2">
+                    <div className="flex flex-wrap gap-1 items-center justify-center">
+                      {dayEntries.slice(0, 3).map(entry => (
+                        <div
+                          key={entry.id}
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{
+                            backgroundColor: entry.tags[0] 
+                              ? getTagDetails(entry.tags[0])?.color.replace('bg-', '') 
+                              : '#gray-300'
+                          }}
+                        />
+                      ))}
+                      {dayEntries.length > 3 && (
+                        <div className="text-xs text-gray-500 flex-shrink-0">
+                          +{dayEntries.length - 3}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             );
@@ -323,64 +335,28 @@ export default function MoodJournal({ hideExpandButton = false }: MoodJournalPro
   return (
     <Card 
       className="relative transition-all duration-300"
-      style={{ height: isExpanded ? 'auto' : '60px' }}
       id="mood-journal"
     >
-      <div className="absolute right-4 top-4 z-10 flex gap-2">
-        <Tabs
-          value={viewType}
-          onValueChange={(value) => setViewType(value as JournalViewType)}
-          className="bg-white rounded-lg shadow-sm"
-        >
-          <TabsList>
-            <TabsTrigger value="list">
-              <List className="h-4 w-4" />
-            </TabsTrigger>
-            <TabsTrigger value="calendar">
-              <Calendar className="h-4 w-4" />
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-        {!hideExpandButton && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full mb-2"
-          >
-            {isExpanded ? <ChevronUp /> : <ChevronDown />}
-          </Button>
-        )}
-      </div>
-
-      <motion.div
-        initial={false}
-        animate={{
-          height: isExpanded ? 'auto' : '60px',
-          overflow: isExpanded ? 'visible' : 'hidden'
-        }}
-        transition={{ duration: 0.3 }}
-      >
-        <div className="p-4">
-          <h2 className="text-2xl font-bold mb-4">Mood Journal</h2>
-          
-          {isExpanded && renderFilters()}
-          
-          <AnimatePresence mode="wait">
-            {isExpanded && (
-              <motion.div
-                key={viewType}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {viewType === 'list' ? renderListView() : renderCalendarView()}
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div className="p-4">
+        <div className="flex justify-between items-center mb-4">
+          <Tabs value={viewType} onValueChange={(value) => setViewType(value as JournalViewType)}>
+            <TabsList>
+              <TabsTrigger value="list">
+                <List className="h-4 w-4" />
+              </TabsTrigger>
+              <TabsTrigger value="calendar">
+                <Calendar className="h-4 w-4" />
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
-      </motion.div>
+
+        {renderFilters()}
+
+        <ScrollArea className="h-[calc(100vh-13rem)]">
+          {viewType === 'list' ? renderListView() : renderCalendarView()}
+        </ScrollArea>
+      </div>
     </Card>
   );
 }
