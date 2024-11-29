@@ -3,10 +3,7 @@
     "builds": [
       {
         "src": "backend/main.py",
-        "use": "@vercel/python",
-        "config": {
-          "maxDuration": 60
-        }
+        "use": "@vercel/python"
       },
       {
         "src": "package.json",
@@ -26,4 +23,4 @@
     "env": {
       "NEXT_PUBLIC_API_URL": "/api"
     }
-}
+  } 

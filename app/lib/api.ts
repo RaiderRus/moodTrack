@@ -5,42 +5,29 @@ const API_URL = isDevelopment
   ? 'http://localhost:8000'
   : process.env.NEXT_PUBLIC_API_URL || 'https://mood-track-orpin.vercel.app';
 
-export async function transcribeAudio(audioUrl: string): Promise<string> {
+export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   try {
-    console.log('Starting transcribeAudio...', {
-      audioUrl,
-      endpoint: `${API_URL}/api/transcribe`
-    });
+    console.log('Sending request to:', `${API_URL}/api/transcribe`);
+    const formData = new FormData();
+    formData.append('file', audioBlob);
 
     const response = await fetch(`${API_URL}/api/transcribe`, {
       method: 'POST',
+      body: formData,
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
+        // Не устанавливаем Content-Type, так как он автоматически устанавливается для FormData
       },
-      body: JSON.stringify({ audioUrl })
-    });
-
-    console.log('Transcribe API response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
+      credentials: 'include', // Добавляем поддержку кук
+      mode: 'cors', // Явно указываем режим CORS
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Transcription failed:', {
-        status: response.status,
-        errorText: errorText
-      });
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
     const data = await response.json();
-    console.log('Transcription successful:', {
-      textLength: data.text?.length,
-      text: data.text?.substring(0, 100) + '...' // Логируем только начало текста
-    });
     return data.text;
   } catch (error) {
     console.error('Error in transcribeAudio:', error);
@@ -50,40 +37,20 @@ export async function transcribeAudio(audioUrl: string): Promise<string> {
 
 export async function analyzeMoodText(text: string): Promise<string[]> {
   try {
-    console.log('Starting analyzeMoodText...', {
-      textLength: text.length,
-      textPreview: text.substring(0, 100) + '...',
-      endpoint: `${API_URL}/api/analyze`
-    });
-
+    console.log('Sending request to:', `${API_URL}/api/analyze`);
     const response = await fetch(`${API_URL}/api/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
       },
       body: JSON.stringify({ text }),
     });
 
-    console.log('Analyze API response received:', {
-      status: response.status,
-      statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
-    });
-
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Analysis failed:', {
-        status: response.status,
-        errorText: errorText
-      });
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('Analysis successful:', {
-      tags: data.tags
-    });
     return data.tags;
   } catch (error) {
     console.error('Error in analyzeMoodText:', error);
