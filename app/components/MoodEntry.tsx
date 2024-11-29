@@ -23,6 +23,7 @@ export default function MoodEntry() {
   const [text, setText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -55,7 +56,7 @@ export default function MoodEntry() {
       recorder.onstop = async () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setAudioBlob(blob);
-        setIsProcessing(true);
+        setIsTranscribing(true);
         try {
           const transcription = await transcribeAudio(blob);
           await handleTranscribedText(transcription);
@@ -63,7 +64,7 @@ export default function MoodEntry() {
           toast.error('Failed to transcribe audio');
           console.error(error);
         } finally {
-          setIsProcessing(false);
+          setIsTranscribing(false);
         }
       };
 
@@ -240,7 +241,7 @@ export default function MoodEntry() {
   };
 
   const handleTranscribedText = async (text: string) => {
-    setIsProcessing(true);
+    setIsTranscribing(true);
     try {
       console.log('Starting text analysis...');
       setText(text); // Set the transcribed text first
@@ -252,7 +253,7 @@ export default function MoodEntry() {
       console.error('Failed to analyze text:', error);
       toast.error('Failed to analyze the recording.');
     } finally {
-      setIsProcessing(false);
+      setIsTranscribing(false);
     }
   };
 
@@ -294,9 +295,9 @@ export default function MoodEntry() {
                 ? 'bg-red-400 hover:bg-red-500 text-white' 
                 : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
             )}
-            disabled={isProcessing}
+            disabled={isTranscribing}
           >
-            {isProcessing ? (
+            {isTranscribing ? (
               <motion.div 
                 className="w-8 h-8 border-2 border-white rounded-full border-t-transparent"
                 animate={{ rotate: 360 }}
@@ -307,7 +308,7 @@ export default function MoodEntry() {
             )}
           </button>
           
-          {isProcessing && (
+          {isTranscribing && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -387,7 +388,7 @@ export default function MoodEntry() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="How are you feeling?"
-            disabled={isProcessing}
+            disabled={isTranscribing}
           />
         </div>
 
@@ -395,7 +396,7 @@ export default function MoodEntry() {
           <div className="flex justify-end">
             <Button
               onClick={saveMoodEntry}
-              disabled={isProcessing || (!text && selectedTags.length === 0)}
+              disabled={isTranscribing || (!text && selectedTags.length === 0)}
             >
               Save Entry
             </Button>
