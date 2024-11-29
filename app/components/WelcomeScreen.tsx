@@ -33,22 +33,36 @@ export default function WelcomeScreen({ onComplete, onStartAnimation }: WelcomeS
             whileTap={{ scale: 0.9 }}
           >
             <motion.div
-              className="absolute -inset-4 rounded-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
+              className="absolute -inset-16 rounded-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400"
+              initial={{ opacity: 0.5, filter: "blur(20px)" }}
               animate={{
                 rotate: 360,
-                scale: [1, 1.1, 1],
+                scale: [1, 1.2, 1],
+                opacity: [0.5, 0.7, 0.5],
+              }}
+              whileHover={{
+                scale: [1.2, 1.4, 1.2],
+                opacity: [0.6, 0.8, 0.6],
+                filter: "blur(25px)",
               }}
               transition={{
                 duration: 3,
                 repeat: Infinity,
                 ease: "linear",
               }}
-              style={{ filter: "blur(15px)", opacity: 0.5 }}
             />
             <motion.button
               className="relative w-24 h-24 rounded-full bg-white shadow-lg flex items-center justify-center cursor-pointer"
               onClick={handleClick}
-              whileHover={{ boxShadow: "0 0 30px rgba(0,0,0,0.1)" }}
+              whileHover={{ 
+                boxShadow: "0 0 40px rgba(0,0,0,0.1)",
+                scale: 1.05,
+              }}
+              transition={{
+                type: "spring",
+                stiffness: 400,
+                damping: 25
+              }}
             >
               <Plus className="w-12 h-12 text-slate-600" />
             </motion.button>

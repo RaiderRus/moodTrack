@@ -24,14 +24,14 @@ export default function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps
       <Button
         variant="ghost"
         className={cn(
-          "fixed left-0 top-4 z-50 h-12 w-12 p-0.5 rounded-r-full bg-background/95 shadow-md border border-border/40 backdrop-blur transition-colors hover:bg-accent group",
+          "fixed left-0 top-4 z-50 h-12 w-12 p-0.5 rounded-r-full bg-background/95 shadow-md border border-border/40 backdrop-blur transition-all duration-700 ease-in-out hover:bg-accent group",
           isCollapsed && "translate-x-[60px]"
         )}
         onClick={() => onCollapsedChange(!isCollapsed)}
       >
         <PanelLeftOpen 
           className={cn(
-            "h-8 w-8 transition-transform text-muted-foreground/50 group-hover:text-muted-foreground",
+            "h-8 w-8 transition-all duration-700 ease-in-out text-muted-foreground/50 group-hover:text-muted-foreground",
             !isCollapsed && "rotate-180"
           )} 
         />
@@ -39,7 +39,7 @@ export default function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps
 
       <div
         className={cn(
-          'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-300 pt-20',
+          'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-700 ease-in-out',
           isCollapsed ? 'w-[60px]' : 'w-[300px]'
         )}
       >
