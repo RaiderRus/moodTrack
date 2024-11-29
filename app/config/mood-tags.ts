@@ -13,9 +13,9 @@ export const moodTags = {
     { id: 'social', name: 'Social', category: 'activity', color: 'bg-pink-500' },
     { id: 'rest', name: 'Rest', category: 'activity', color: 'bg-purple-500' },
   ],
-  places: [
-    { id: 'home', name: 'At Home', category: 'place', color: 'bg-indigo-400' },
-    { id: 'work_location', name: 'At Work', category: 'place', color: 'bg-blue-400' },
-    { id: 'outside', name: 'Outside', category: 'place', color: 'bg-green-400' },
+  contexts: [
+    { id: 'home', name: 'At Home', category: 'context', color: 'bg-indigo-400' },
+    { id: 'work_location', name: 'At Work', category: 'context', color: 'bg-blue-400' },
+    { id: 'outside', name: 'Outside', category: 'context', color: 'bg-green-400' },
   ],
 } as const;
