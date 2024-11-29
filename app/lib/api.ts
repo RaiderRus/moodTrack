@@ -7,27 +7,46 @@ const API_URL = isDevelopment
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   try {
-    console.log('Sending request to:', `${API_URL}/api/transcribe`);
+    console.log('Starting transcribeAudio...', {
+      blobType: audioBlob.type,
+      blobSize: audioBlob.size,
+      endpoint: `${API_URL}/api/transcribe`
+    });
+
     const formData = new FormData();
     formData.append('file', audioBlob);
+    console.log('FormData created with audio blob');
 
     const response = await fetch(`${API_URL}/api/transcribe`, {
       method: 'POST',
       body: formData,
       headers: {
         'Accept': 'application/json',
-        // Не устанавливаем Content-Type, так как он автоматически устанавливается для FormData
       },
       credentials: 'include', // Добавляем поддержку кук
       mode: 'cors', // Явно указываем режим CORS
     });
 
+    console.log('Transcribe API response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Transcription failed:', {
+        status: response.status,
+        errorText: errorText
+      });
       throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('Transcription successful:', {
+      textLength: data.text?.length,
+      text: data.text?.substring(0, 100) + '...' // Логируем только начало текста
+    });
     return data.text;
   } catch (error) {
     console.error('Error in transcribeAudio:', error);
@@ -37,20 +56,40 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
 
 export async function analyzeMoodText(text: string): Promise<string[]> {
   try {
-    console.log('Sending request to:', `${API_URL}/api/analyze`);
+    console.log('Starting analyzeMoodText...', {
+      textLength: text.length,
+      textPreview: text.substring(0, 100) + '...',
+      endpoint: `${API_URL}/api/analyze`
+    });
+
     const response = await fetch(`${API_URL}/api/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: JSON.stringify({ text }),
     });
 
+    console.log('Analyze API response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      headers: Object.fromEntries(response.headers.entries())
+    });
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Analysis failed:', {
+        status: response.status,
+        errorText: errorText
+      });
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('Analysis successful:', {
+      tags: data.tags
+    });
     return data.tags;
   } catch (error) {
     console.error('Error in analyzeMoodText:', error);

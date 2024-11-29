@@ -53,87 +53,115 @@ async def health_check():
 async def transcribe_audio(file: UploadFile = File(...)):
     temp_file_path = None
     try:
-        logger.info(f"Получен файл для транскрипции: {file.filename}")
+        logger.info(f"[TRANSCRIBE] Начало обработки файла: {file.filename}")
+        logger.info(f"[TRANSCRIBE] Метаданные файла: размер={file.size}, тип={file.content_type}")
+        
         content = await file.read()
+        logger.info(f"[TRANSCRIBE] Прочитано {len(content)} байт")
 
         # Создание временного файла
         with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
             temp_file.write(content)
             temp_file_path = temp_file.name
+            logger.info(f"[TRANSCRIBE] Создан временный файл: {temp_file_path}")
+
+        # Проверка существования и размера временного файла
+        if os.path.exists(temp_file_path):
+            file_size = os.path.getsize(temp_file_path)
+            logger.info(f"[TRANSCRIBE] Временный файл существует, размер: {file_size} байт")
+        else:
+            logger.error("[TRANSCRIBE] Временный файл не был создан!")
+            raise HTTPException(status_code=500, detail="Failed to create temporary file")
 
         # Открытие временного файла для чтения
         with open(temp_file_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="text"
-            )
+            logger.info("[TRANSCRIBE] Начинаем запрос к OpenAI API")
+            try:
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text"
+                )
+                logger.info(f"[TRANSCRIBE] Получен ответ от OpenAI API: {transcript[:100]}...")
+            except Exception as openai_error:
+                logger.error(f"[TRANSCRIBE] Ошибка OpenAI API: {str(openai_error)}")
+                raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(openai_error)}")
 
-        logger.info(f"Результат транскрипции: {transcript}")
         return JSONResponse(content={"text": transcript})
     except Exception as e:
-        logger.error(f"Ошибка при транскрипции: {str(e)}")
+        logger.error(f"[TRANSCRIBE] Ошибка при транскрипции: {str(e)}")
+        logger.error(f"[TRANSCRIBE] Тип ошибки: {type(e).__name__}")
+        import traceback
+        logger.error(f"[TRANSCRIBE] Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Удаление временного файла, если он был создан
         if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+            try:
+                os.remove(temp_file_path)
+                logger.info(f"[TRANSCRIBE] Временный файл удален: {temp_file_path}")
+            except Exception as e:
+                logger.error(f"[TRANSCRIBE] Ошибка при удалении временного файла: {str(e)}")
 
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
     try:
-        logger.info(f"Received text for analysis: {request.text}")
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are a mood analysis expert. When analyzing text, return ONLY a JSON array of mood tags.
-                        Available tags are:
-                        Emotions: ["happy", "excited", "calm", "anxious", "sad", "angry"]
-                        Activity: ["work_activity", "exercise", "social", "rest"]
-                        Contexts: ["home", "work_location", "outside"]
-                        Example response: ["happy", "social", "home"]"""
-                },
-                {
-                    "role": "user",
-                    "content": request.text
-                }
-            ],
-            temperature=0.7,
-            max_tokens=100
-        )
-        
-        # Логируем полный ответ от OpenAI
-        logger.info(f"Full OpenAI response: {response}")
-        
-        # Получаем текст ответа
-        response_text = response.choices[0].message.content.strip()
-        logger.info(f"Raw response text: {response_text}")
+        logger.info(f"[ANALYZE] Получен текст для анализа длиной {len(request.text)} символов")
+        logger.info(f"[ANALYZE] Начало текста: {request.text[:100]}...")
         
         try:
-            # Пытаемся преобразовать текст в список
+            logger.info("[ANALYZE] Отправка запроса к OpenAI API")
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """You are a mood analysis expert. When analyzing text, return ONLY a JSON array of mood tags.
+                            Available tags are:
+                            Emotions: ["happy", "excited", "calm", "anxious", "sad", "angry"]
+                            Activity: ["work_activity", "exercise", "social", "rest"]
+                            Contexts: ["home", "work_location", "outside"]
+                            Example response: ["happy", "social", "home"]"""
+                    },
+                    {
+                        "role": "user",
+                        "content": request.text
+                    }
+                ],
+                temperature=0.7,
+                max_tokens=100
+            )
+            logger.info(f"[ANALYZE] Получен ответ от OpenAI API: {response}")
+        except Exception as openai_error:
+            logger.error(f"[ANALYZE] Ошибка OpenAI API: {str(openai_error)}")
+            raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(openai_error)}")
+        
+        response_text = response.choices[0].message.content.strip()
+        logger.info(f"[ANALYZE] Текст ответа: {response_text}")
+        
+        try:
             import json
             tags = json.loads(response_text)
-            logger.info(f"Parsed tags: {tags}")
+            logger.info(f"[ANALYZE] Распознанные теги: {tags}")
             
-            # Проверяем, что все теги валидные
             valid_tags = [
                 "happy", "excited", "calm", "anxious", "sad", "angry",
                 "work_activity", "exercise", "social", "rest",
                 "home", "work_location", "outside"
             ]
             tags = [tag for tag in tags if tag in valid_tags]
+            logger.info(f"[ANALYZE] Отфильтрованные теги: {tags}")
             
             return TextAnalysisResponse(tags=tags)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse OpenAI response as JSON: {e}")
+            logger.error(f"[ANALYZE] Ошибка парсинга JSON: {e}")
+            logger.error(f"[ANALYZE] Проблемный текст: {response_text}")
             raise HTTPException(status_code=500, detail="Failed to parse mood tags")
             
     except Exception as e:
-        logger.error(f"Error in analyze_text: {str(e)}")
-        logger.exception(e)
+        logger.error(f"[ANALYZE] Ошибка в analyze_text: {str(e)}")
+        logger.error(f"[ANALYZE] Тип ошибки: {type(e).__name__}")
+        import traceback
+        logger.error(f"[ANALYZE] Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

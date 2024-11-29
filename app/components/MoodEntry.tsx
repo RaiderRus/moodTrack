@@ -58,7 +58,7 @@ export default function MoodEntry() {
         setIsProcessing(true);
         try {
           const transcription = await transcribeAudio(blob);
-          setText(transcription);
+          await handleTranscribedText(transcription);
         } catch (error) {
           toast.error('Failed to transcribe audio');
           console.error(error);
@@ -243,6 +243,7 @@ export default function MoodEntry() {
     setIsProcessing(true);
     try {
       console.log('Starting text analysis...');
+      setText(text); // Set the transcribed text first
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
       setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
@@ -333,15 +334,6 @@ export default function MoodEntry() {
             placeholder="How are you feeling?"
             disabled={isProcessing}
           />
-          {text && (
-            <Button
-              variant="outline"
-              onClick={() => handleTranscribedText(text)}
-              disabled={isProcessing}
-            >
-              Analyze
-            </Button>
-          )}
         </div>
 
         {(selectedTags.length > 0 || text) && (
