@@ -57,10 +57,22 @@ export default function MoodEntry() {
         setAudioBlob(blob);
         setIsProcessing(true);
         try {
-          const transcription = await transcribeAudio(blob);
+          // Сначала сохраняем в Supabase
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) {
+            router.push('/login');
+            return;
+          }
+
+          const tempId = Date.now().toString(); // Временный ID для записи
+          const { url: audioUrl } = await saveAudioRecording(blob, tempId);
+          console.log('Audio saved to Supabase:', audioUrl);
+
+          // Теперь отправляем URL на транскрипцию
+          const transcription = await transcribeAudio(audioUrl);
           await handleTranscribedText(transcription);
         } catch (error) {
-          toast.error('Failed to transcribe audio');
+          toast.error('Failed to process audio');
           console.error(error);
         } finally {
           setIsProcessing(false);

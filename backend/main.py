@@ -7,7 +7,8 @@ from openai import OpenAI
 import os
 import logging
 from dotenv import load_dotenv
-import io
+import tempfile
+import aiohttp
 
 # Настраиваем логирование
 logging.basicConfig(level=logging.INFO)
@@ -39,6 +40,9 @@ class TextAnalysisRequest(BaseModel):
 class TextAnalysisResponse(BaseModel):
     tags: List[str]
 
+class AudioTranscribeRequest(BaseModel):
+    audioUrl: str
+
 @app.get("/")
 async def root():
     logger.info("Root endpoint called")
@@ -50,38 +54,107 @@ async def health_check():
     return {"status": "ok"}
 
 @app.post("/api/transcribe")
-async def transcribe_audio(file: UploadFile = File(...)):
+async def transcribe_audio(request: AudioTranscribeRequest):
+    temp_file_path = None
     try:
-        logger.info(f"[TRANSCRIBE] Начало обработки файла: {file.filename}")
-        logger.info(f"[TRANSCRIBE] Метаданные файла: размер={file.size}, тип={file.content_type}")
+        logger.info(f"[TRANSCRIBE] Начало обработки аудио URL: {request.audioUrl}")
         
-        content = await file.read()
-        logger.info(f"[TRANSCRIBE] Прочитано {len(content)} байт")
+        if not request.audioUrl:
+            logger.error("[TRANSCRIBE] URL аудио не предоставлен")
+            raise HTTPException(status_code=400, detail="Audio URL is required")
 
-        # Используем BytesIO вместо временного файла
-        audio_bytes = io.BytesIO(content)
-        audio_bytes.name = "audio.webm"  # OpenAI API требует имя файла
-        logger.info("[TRANSCRIBE] Создан BytesIO объект")
-
+        # Проверяем, что URL ведет на Supabase
+        if not "supabase.co" in request.audioUrl:
+            logger.error(f"[TRANSCRIBE] Недопустимый URL: {request.audioUrl}")
+            raise HTTPException(status_code=400, detail="Invalid audio URL")
+        
+        # Загружаем файл по URL
         try:
-            logger.info("[TRANSCRIBE] Начинаем запрос к OpenAI API")
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_bytes,
-                response_format="text"
-            )
-            logger.info(f"[TRANSCRIBE] Получен ответ от OpenAI API: {transcript[:100]}...")
-        except Exception as openai_error:
-            logger.error(f"[TRANSCRIBE] Ошибка OpenAI API: {str(openai_error)}")
-            raise HTTPException(status_code=500, detail=f"OpenAI API error: {str(openai_error)}")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(request.audioUrl) as response:
+                    if response.status != 200:
+                        logger.error(f"[TRANSCRIBE] Ошибка загрузки файла: {response.status}")
+                        error_text = await response.text()
+                        logger.error(f"[TRANSCRIBE] Текст ошибки: {error_text}")
+                        raise HTTPException(
+                            status_code=500,
+                            detail=f"Failed to download audio file: {response.status}"
+                        )
+                    
+                    content = await response.read()
+                    content_type = response.headers.get('content-type', '')
+                    logger.info(f"[TRANSCRIBE] Прочитано {len(content)} байт, тип контента: {content_type}")
+
+                    if len(content) == 0:
+                        raise HTTPException(status_code=400, detail="Empty audio file")
+
+        except aiohttp.ClientError as e:
+            logger.error(f"[TRANSCRIBE] Ошибка при загрузке файла: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to download audio file: {str(e)}")
+
+        # Создание временного файла
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
+                temp_file.write(content)
+                temp_file_path = temp_file.name
+                logger.info(f"[TRANSCRIBE] Создан временный файл: {temp_file_path}")
+        except IOError as e:
+            logger.error(f"[TRANSCRIBE] Ошибка создания временного файла: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to create temporary file")
+
+        # Проверка существования и размера временного файла
+        if os.path.exists(temp_file_path):
+            file_size = os.path.getsize(temp_file_path)
+            logger.info(f"[TRANSCRIBE] Временный файл существует, размер: {file_size} байт")
+            if file_size == 0:
+                raise HTTPException(status_code=400, detail="Empty audio file")
+        else:
+            logger.error("[TRANSCRIBE] Временный файл не был создан!")
+            raise HTTPException(status_code=500, detail="Failed to create temporary file")
+
+        # Открытие временного файла для чтения
+        try:
+            with open(temp_file_path, "rb") as audio_file:
+                logger.info("[TRANSCRIBE] Начинаем запрос к OpenAI API")
+                try:
+                    transcript = client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        response_format="text"
+                    )
+                    if not transcript:
+                        raise HTTPException(status_code=500, detail="Empty transcription result")
+                    
+                    logger.info(f"[TRANSCRIBE] Получен ответ от OpenAI API: {transcript[:100]}...")
+                except Exception as openai_error:
+                    logger.error(f"[TRANSCRIBE] Ошибка OpenAI API: {str(openai_error)}")
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"OpenAI API error: {str(openai_error)}"
+                    )
+        except IOError as e:
+            logger.error(f"[TRANSCRIBE] Ошибка чтения временного файла: {str(e)}")
+            raise HTTPException(status_code=500, detail="Failed to read temporary file")
 
         return JSONResponse(content={"text": transcript})
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"[TRANSCRIBE] Ошибка при транскрипции: {str(e)}")
+        logger.error(f"[TRANSCRIBE] Неожиданная ошибка при транскрипции: {str(e)}")
         logger.error(f"[TRANSCRIBE] Тип ошибки: {type(e).__name__}")
         import traceback
         logger.error(f"[TRANSCRIBE] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected error during transcription: {str(e)}"
+        )
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+                logger.info(f"[TRANSCRIBE] Временный файл удален: {temp_file_path}")
+            except Exception as e:
+                logger.error(f"[TRANSCRIBE] Ошибка при удалении временного файла: {str(e)}")
 
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):

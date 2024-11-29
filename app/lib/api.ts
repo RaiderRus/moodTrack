@@ -5,32 +5,20 @@ const API_URL = isDevelopment
   ? 'http://localhost:8000'
   : process.env.NEXT_PUBLIC_API_URL || 'https://mood-track-orpin.vercel.app';
 
-export async function transcribeAudio(audioBlob: Blob): Promise<string> {
+export async function transcribeAudio(audioUrl: string): Promise<string> {
   try {
-    // Проверка размера файла (4.5MB = 4.5 * 1024 * 1024 bytes)
-    const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
-    if (audioBlob.size > MAX_FILE_SIZE) {
-      throw new Error(`File size (${(audioBlob.size / (1024 * 1024)).toFixed(2)}MB) exceeds maximum allowed size (4.5MB)`);
-    }
-
     console.log('Starting transcribeAudio...', {
-      blobType: audioBlob.type,
-      blobSize: audioBlob.size,
+      audioUrl,
       endpoint: `${API_URL}/api/transcribe`
     });
 
-    const formData = new FormData();
-    formData.append('file', audioBlob);
-    console.log('FormData created with audio blob');
-
     const response = await fetch(`${API_URL}/api/transcribe`, {
       method: 'POST',
-      body: formData,
       headers: {
+        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      credentials: 'include', // Добавляем поддержку кук
-      mode: 'cors', // Явно указываем режим CORS
+      body: JSON.stringify({ audioUrl })
     });
 
     console.log('Transcribe API response received:', {
