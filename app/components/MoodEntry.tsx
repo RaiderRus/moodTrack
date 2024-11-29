@@ -294,9 +294,64 @@ export default function MoodEntry() {
                 ? 'bg-red-400 hover:bg-red-500 text-white' 
                 : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
             )}
+            disabled={isProcessing}
           >
-            <Mic className="h-8 w-8" />
+            {isProcessing ? (
+              <motion.div 
+                className="w-8 h-8 border-2 border-white rounded-full border-t-transparent"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              />
+            ) : (
+              <Mic className="h-8 w-8" />
+            )}
           </button>
+          
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="absolute right-20 top-[50%] -translate-y-[50%] bg-white/90 backdrop-blur-sm shadow-lg rounded-lg px-4 py-2 flex items-center gap-2"
+            >
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">Processing</span>
+                <span className="text-xs text-muted-foreground">
+                  {audioBlob ? "Transcribing audio..." : "Analyzing text..."}
+                </span>
+              </div>
+              <motion.div 
+                className="flex gap-1"
+                initial="start"
+                animate="end"
+                variants={{
+                  start: { transition: { staggerChildren: 0.2 } },
+                  end: { transition: { staggerChildren: 0.2 } }
+                }}
+              >
+                <motion.span
+                  className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                  variants={{
+                    start: { y: 0 },
+                    end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity } }
+                  }}
+                />
+                <motion.span
+                  className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                  variants={{
+                    start: { y: 0 },
+                    end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.2 } }
+                  }}
+                />
+                <motion.span
+                  className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                  variants={{
+                    start: { y: 0 },
+                    end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.4 } }
+                  }}
+                />
+              </motion.div>
+            </motion.div>
+          )}
         </div>
 
         {selectedTags.length > 0 && (
