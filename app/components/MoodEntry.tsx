@@ -31,6 +31,7 @@ export default function MoodEntry() {
     tags: string[];
     isAnimating: boolean;
   } | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const router = useRouter();
   const { addEntry } = useMood();
 
@@ -44,6 +45,43 @@ export default function MoodEntry() {
     
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+
+    const analyzeText = async () => {
+      if (text && isAnalyzing) {
+        try {
+          console.log('Starting text analysis...');
+          const tags = await analyzeMoodText(text);
+          console.log('Received tags:', tags);
+          
+          if (Array.isArray(tags) && tags.length > 0) {
+            setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+            toast.success('Voice recording analyzed! Relevant tags have been selected.');
+          } else {
+            console.log('No tags received from analysis');
+            toast.info('Voice recorded, but no mood tags were detected.');
+          }
+        } catch (error) {
+          console.error('Failed to analyze text:', error);
+          toast.error('Failed to analyze the recording, but text was saved.');
+        } finally {
+          setIsAnalyzing(false);
+        }
+      }
+    };
+
+    if (isAnalyzing && text) {
+      timeoutId = setTimeout(analyzeText, 500);
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [text, isAnalyzing]);
 
   const startRecording = async () => {
     try {
@@ -243,26 +281,11 @@ export default function MoodEntry() {
     setIsProcessing(true);
     try {
       console.log('Setting transcribed text...');
-      setText(transcribedText); // Set the transcribed text first
-      
-      // Добавляем небольшую задержку перед анализом
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      console.log('Starting text analysis...');
-      const tags = await analyzeMoodText(transcribedText);
-      console.log('Received tags:', tags);
-      
-      if (Array.isArray(tags) && tags.length > 0) {
-        setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-        toast.success('Voice recording analyzed! Relevant tags have been selected.');
-      } else {
-        console.log('No tags received from analysis');
-        toast.info('Voice recorded, but no mood tags were detected.');
-      }
+      setText(transcribedText);
+      setIsAnalyzing(true);
     } catch (error) {
-      console.error('Failed to analyze text:', error);
-      // В случае ошибки анализа, всё равно сохраняем текст
-      toast.error('Failed to analyze the recording, but text was saved.');
+      console.error('Failed to handle transcribed text:', error);
+      toast.error('Failed to process the recording.');
     } finally {
       setIsProcessing(false);
     }
