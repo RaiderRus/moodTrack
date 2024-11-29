@@ -7,6 +7,12 @@ const API_URL = isDevelopment
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   try {
+    // Проверка размера файла (4.5MB = 4.5 * 1024 * 1024 bytes)
+    const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
+    if (audioBlob.size > MAX_FILE_SIZE) {
+      throw new Error(`File size (${(audioBlob.size / (1024 * 1024)).toFixed(2)}MB) exceeds maximum allowed size (4.5MB)`);
+    }
+
     console.log('Starting transcribeAudio...', {
       blobType: audioBlob.type,
       blobSize: audioBlob.size,

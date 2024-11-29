@@ -1,26 +1,32 @@
 {
-    "version": 2,
-    "builds": [
-      {
-        "src": "backend/main.py",
-        "use": "@vercel/python"
-      },
-      {
-        "src": "package.json",
-        "use": "@vercel/next"
-      }
-    ],
-    "routes": [
-      {
-        "src": "/api/(.*)",
-        "dest": "backend/main.py"
-      },
-      {
-        "src": "/(.*)",
-        "dest": "/$1"
-      }
-    ],
-    "env": {
-      "NEXT_PUBLIC_API_URL": "/api"
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/main.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "package.json",
+      "use": "@vercel/next"
     }
-  } 
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/main.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "NEXT_PUBLIC_API_URL": "/api"
+  },
+  "functions": {
+    "backend/main.py": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}
