@@ -82,74 +82,59 @@ async def transcribe_audio(file: UploadFile = File(...)):
 @app.post("/api/analyze", response_model=TextAnalysisResponse)
 async def analyze_text(request: TextAnalysisRequest):
     try:
-        if not request.text or len(request.text.strip()) == 0:
-            logger.warning("Empty text received for analysis")
-            return TextAnalysisResponse(tags=[])
-
-        logger.info(f"Received text for analysis: {request.text[:100]}...")  # Логируем только первые 100 символов
+        logger.info(f"Received text for analysis: {request.text}")
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """You are a mood analysis expert. When analyzing text, return ONLY a JSON array of mood tags.
+                        Available tags are:
+                        Emotions: ["happy", "excited", "calm", "anxious", "sad", "angry"]
+                        Activity: ["work_activity", "exercise", "social", "rest"]
+                        Contexts: ["home", "work_location", "outside"]
+                        Example response: ["happy", "social", "home"]"""
+                },
+                {
+                    "role": "user",
+                    "content": request.text
+                }
+            ],
+            temperature=0.7,
+            max_tokens=100
+        )
+        
+        # Логируем полный ответ от OpenAI
+        logger.info(f"Full OpenAI response: {response}")
+        
+        # Получаем текст ответа
+        response_text = response.choices[0].message.content.strip()
+        logger.info(f"Raw response text: {response_text}")
         
         try:
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """You are a mood analysis expert. When analyzing text, return ONLY a JSON array of mood tags.
-                            Available tags are:
-                            Emotions: ["happy", "excited", "calm", "anxious", "sad", "angry"]
-                            Activity: ["work_activity", "exercise", "social", "rest"]
-                            Contexts: ["home", "work_location", "outside"]
-                            Example response: ["happy", "social", "home"]"""
-                    },
-                    {
-                        "role": "user",
-                        "content": request.text
-                    }
-                ],
-                temperature=0.7,
-                max_tokens=100
-            )
-            
-            # Получаем текст ответа
-            response_text = response.choices[0].message.content.strip()
-            logger.info(f"Raw response text: {response_text}")
-            
             # Пытаемся преобразовать текст в список
             import json
-            try:
-                tags = json.loads(response_text)
-                if not isinstance(tags, list):
-                    logger.error(f"Invalid response format (not a list): {response_text}")
-                    return TextAnalysisResponse(tags=[])
-                
-                # Проверяем, что все теги валидные
-                valid_tags = [
-                    "happy", "excited", "calm", "anxious", "sad", "angry",
-                    "work_activity", "exercise", "social", "rest",
-                    "home", "work_location", "outside"
-                ]
-                valid_tags_set = set(valid_tags)
-                filtered_tags = [tag for tag in tags if tag in valid_tags_set]
-                
-                if not filtered_tags:
-                    logger.warning(f"No valid tags found in response: {tags}")
-                    return TextAnalysisResponse(tags=[])
-                
-                logger.info(f"Returning valid tags: {filtered_tags}")
-                return TextAnalysisResponse(tags=filtered_tags)
-                
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse OpenAI response as JSON: {e}")
-                return TextAnalysisResponse(tags=[])
-                
-        except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
-            return TextAnalysisResponse(tags=[])
+            tags = json.loads(response_text)
+            logger.info(f"Parsed tags: {tags}")
+            
+            # Проверяем, что все теги валидные
+            valid_tags = [
+                "happy", "excited", "calm", "anxious", "sad", "angry",
+                "work_activity", "exercise", "social", "rest",
+                "home", "work_location", "outside"
+            ]
+            tags = [tag for tag in tags if tag in valid_tags]
+            
+            return TextAnalysisResponse(tags=tags)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse OpenAI response as JSON: {e}")
+            raise HTTPException(status_code=500, detail="Failed to parse mood tags")
             
     except Exception as e:
         logger.error(f"Error in analyze_text: {str(e)}")
         logger.exception(e)
-        return TextAnalysisResponse(tags=[])
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

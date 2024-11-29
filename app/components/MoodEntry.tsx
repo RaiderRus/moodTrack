@@ -31,7 +31,6 @@ export default function MoodEntry() {
     tags: string[];
     isAnimating: boolean;
   } | null>(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const router = useRouter();
   const { addEntry } = useMood();
 
@@ -46,43 +45,6 @@ export default function MoodEntry() {
     checkAuth();
   }, [router]);
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    const analyzeText = async () => {
-      if (text && isAnalyzing) {
-        try {
-          console.log('Starting text analysis...');
-          const tags = await analyzeMoodText(text);
-          console.log('Received tags:', tags);
-          
-          if (Array.isArray(tags) && tags.length > 0) {
-            setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-            toast.success('Voice recording analyzed! Relevant tags have been selected.');
-          } else {
-            console.log('No tags received from analysis');
-            toast.info('Voice recorded, but no mood tags were detected.');
-          }
-        } catch (error) {
-          console.error('Failed to analyze text:', error);
-          toast.error('Failed to analyze the recording, but text was saved.');
-        } finally {
-          setIsAnalyzing(false);
-        }
-      }
-    };
-
-    if (isAnalyzing && text) {
-      timeoutId = setTimeout(analyzeText, 500);
-    }
-
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [text, isAnalyzing]);
-
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -94,23 +56,13 @@ export default function MoodEntry() {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setAudioBlob(blob);
         setIsProcessing(true);
-
         try {
-          // Добавляем задержку перед отправкой на транскрибацию
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          console.log('Starting transcription...');
           const transcription = await transcribeAudio(blob);
-          console.log('Transcription received:', transcription);
-
-          // Добавляем задержку перед установкой текста
-          await new Promise(resolve => setTimeout(resolve, 1000));
           await handleTranscribedText(transcription);
         } catch (error) {
-          console.error('Transcription error:', error);
           toast.error('Failed to transcribe audio');
+          console.error(error);
         } finally {
-          // Останавливаем все треки
-          stream.getTracks().forEach(track => track.stop());
           setIsProcessing(false);
         }
       };
@@ -287,34 +239,25 @@ export default function MoodEntry() {
     }
   };
 
-  const handleTranscribedText = async (transcribedText: string) => {
-    if (!transcribedText || transcribedText.trim() === '') {
-      console.log('Empty transcription received');
-      setIsProcessing(false);
+  const handleTranscribedText = async (transcription: string) => {
+    setText(transcription);
+    setAudioBlob(null);
+  };
+
+  const handleAnalyzeText = async () => {
+    if (!text.trim()) {
+      toast.error('Please enter some text to analyze');
       return;
     }
 
+    setIsProcessing(true);
     try {
-      console.log('Setting transcribed text...');
-      setText(transcribedText);
-      
-      // Добавляем значительную задержку перед анализом
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Starting text analysis...');
-      const tags = await analyzeMoodText(transcribedText);
-      console.log('Received tags:', tags);
-      
-      if (Array.isArray(tags) && tags.length > 0) {
-        setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-        toast.success('Voice recording analyzed! Relevant tags have been selected.');
-      } else {
-        console.log('No tags received from analysis');
-        toast.info('Voice recorded, but no mood tags were detected.');
-      }
+      const tags = await analyzeMoodText(text);
+      setSelectedTags(tags);
+      toast.success('Text analyzed successfully');
     } catch (error) {
-      console.error('Failed to analyze text:', error);
-      toast.error('Failed to analyze the recording, but text was saved.');
+      console.error('Error analyzing text:', error);
+      toast.error('Failed to analyze text');
     } finally {
       setIsProcessing(false);
     }
@@ -398,6 +341,17 @@ export default function MoodEntry() {
             placeholder="How are you feeling?"
             disabled={isProcessing}
           />
+          <Button
+            variant="outline"
+            onClick={handleAnalyzeText}
+            disabled={isProcessing || !text.trim()}
+          >
+            {isProcessing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              'Analyze'
+            )}
+          </Button>
         </div>
 
         {(selectedTags.length > 0 || text) && (
