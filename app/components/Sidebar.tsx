@@ -24,12 +24,17 @@ export default function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps
       <Button
         variant="ghost"
         className={cn(
-          "fixed left-4 top-4 z-50 h-12 w-12 p-0.5 rounded-full bg-background/95 shadow-md border border-border/40 backdrop-blur transition-colors hover:bg-accent group",
-          isCollapsed && "rotate-180"
+          "fixed left-0 top-4 z-50 h-12 w-12 p-0.5 rounded-r-full bg-background/95 shadow-md border border-border/40 backdrop-blur transition-colors hover:bg-accent group",
+          isCollapsed && "translate-x-[60px]"
         )}
         onClick={() => onCollapsedChange(!isCollapsed)}
       >
-        <PanelLeftOpen className="h-8 w-8 transition-transform text-muted-foreground/50 group-hover:text-muted-foreground" />
+        <PanelLeftOpen 
+          className={cn(
+            "h-8 w-8 transition-transform text-muted-foreground/50 group-hover:text-muted-foreground",
+            !isCollapsed && "rotate-180"
+          )} 
+        />
       </Button>
 
       <div

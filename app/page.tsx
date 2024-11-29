@@ -7,7 +7,18 @@ import { useState } from 'react';
 
 export default function Home() {
   const [showWelcome, setShowWelcome] = useState(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true);
+
+  const handleWelcomeComplete = () => {
+    setShowWelcome(false);
+  };
+
+  const handleStartAnimation = () => {
+    // Открываем сайдбар через 2 секунды после нажатия кнопки
+    setTimeout(() => {
+      setIsSidebarCollapsed(false);
+    }, 2000);
+  };
 
   return (
     <div className="relative min-h-screen">
@@ -17,7 +28,12 @@ export default function Home() {
           isSidebarCollapsed ? 'ml-[60px]' : 'ml-[300px]'
         }`}
       >
-        {showWelcome && <WelcomeScreen onComplete={() => setShowWelcome(false)} />}
+        {showWelcome && (
+          <WelcomeScreen 
+            onComplete={handleWelcomeComplete} 
+            onStartAnimation={handleStartAnimation}
+          />
+        )}
         <MoodEntry />
       </main>
     </div>

@@ -6,13 +6,15 @@ import { useState } from "react";
 
 interface WelcomeScreenProps {
   onComplete: () => void;
+  onStartAnimation: () => void;
 }
 
-export default function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
+export default function WelcomeScreen({ onComplete, onStartAnimation }: WelcomeScreenProps) {
   const [isAnimating, setIsAnimating] = useState(false);
 
   const handleClick = () => {
     setIsAnimating(true);
+    onStartAnimation();
     // Задержка перед вызовом onComplete, чтобы анимация успела проиграться
     setTimeout(onComplete, 1000);
   };
