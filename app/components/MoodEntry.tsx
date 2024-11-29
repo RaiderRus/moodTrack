@@ -239,18 +239,30 @@ export default function MoodEntry() {
     }
   };
 
-  const handleTranscribedText = async (text: string) => {
+  const handleTranscribedText = async (transcribedText: string) => {
     setIsProcessing(true);
     try {
+      console.log('Setting transcribed text...');
+      setText(transcribedText); // Set the transcribed text first
+      
+      // Добавляем небольшую задержку перед анализом
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       console.log('Starting text analysis...');
-      setText(text); // Set the transcribed text first
-      const tags = await analyzeMoodText(text);
+      const tags = await analyzeMoodText(transcribedText);
       console.log('Received tags:', tags);
-      setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
-      toast.success('Voice recording analyzed! Relevant tags have been selected.');
+      
+      if (Array.isArray(tags) && tags.length > 0) {
+        setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+        toast.success('Voice recording analyzed! Relevant tags have been selected.');
+      } else {
+        console.log('No tags received from analysis');
+        toast.info('Voice recorded, but no mood tags were detected.');
+      }
     } catch (error) {
       console.error('Failed to analyze text:', error);
-      toast.error('Failed to analyze the recording.');
+      // В случае ошибки анализа, всё равно сохраняем текст
+      toast.error('Failed to analyze the recording, but text was saved.');
     } finally {
       setIsProcessing(false);
     }
