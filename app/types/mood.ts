@@ -1,7 +1,7 @@
 export type MoodTag = {
   id: string;
   name: string;
-  category: 'emotion' | 'activity' | 'context';
+  category: 'emotion' | 'activity' | 'place';
   color: string;
 };
 
