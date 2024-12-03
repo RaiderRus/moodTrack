@@ -11,7 +11,6 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import type { MoodTag } from '../types/mood';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useMood } from '../contexts/MoodContext';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -27,17 +26,7 @@ export default function MoodEntry() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [previewEntry, setPreviewEntry] = useState<{
-    text: string;
-    tags: string[];
-    isAnimating: boolean;
-  } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [animatingEntry, setAnimatingEntry] = useState<{
-    text: string;
-    tags: string[];
-    isAnimating: boolean;
-  } | null>(null);
   const router = useRouter();
   const { addEntry } = useMood();
 
@@ -51,16 +40,6 @@ export default function MoodEntry() {
     
     checkAuth();
   }, [router]);
-
-  useEffect(() => {
-    if (animatingEntry?.isAnimating) {
-      const timer = setTimeout(() => {
-        setAnimatingEntry(null);
-      }, 1000); // Длительность анимации
-
-      return () => clearTimeout(timer);
-    }
-  }, [animatingEntry?.isAnimating]);
 
   const startRecording = async () => {
     try {
@@ -102,15 +81,8 @@ export default function MoodEntry() {
   };
 
   const saveMoodEntry = async () => {
-    if (isSaving) return; // Предотвращаем повторные запросы
+    if (isSaving) return;
     setIsSaving(true);
-
-    // Запускаем анимацию
-    setAnimatingEntry({
-      text,
-      tags: selectedTags,
-      isAnimating: true
-    });
 
     if (selectedTags.length === 0) {
       toast.error('Please select at least one tag');
@@ -236,52 +208,9 @@ export default function MoodEntry() {
     setIsProcessing(true);
     
     try {
-      const journalElement = document.getElementById('mood-journal');
-      const journalRect = journalElement?.getBoundingClientRect();
-      
-      if (journalRect) {
-        const tagAnimations = selectedTags.map((tagId) => {
-          return new Promise<void>((resolve) => {
-            const tagElement = document.querySelector(`[data-tag-id="${tagId}"]`);
-            const tagRect = tagElement?.getBoundingClientRect();
-            const tag = getTagById(tagId);
-            
-            if (tagRect && tag) {
-              const clone = document.createElement('div');
-              clone.className = `fixed ${tag.color} text-white px-2 py-1 rounded-full text-sm z-50`;
-              clone.style.left = `${tagRect.left}px`;
-              clone.style.top = `${tagRect.top}px`;
-              clone.style.width = `${tagRect.width}px`;
-              clone.style.height = `${tagRect.height}px`;
-              clone.textContent = tag.name;
-              document.body.appendChild(clone);
-
-              requestAnimationFrame(() => {
-                clone.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
-                clone.style.transform = `translate(
-                  ${journalRect.left - tagRect.left + 20}px,
-                  ${journalRect.top - tagRect.top + 20}px
-                ) scale(0.8)`;
-                clone.style.opacity = '0';
-
-                setTimeout(() => {
-                  document.body.removeChild(clone);
-                  resolve();
-                }, 500);
-              });
-            } else {
-              resolve();
-            }
-          });
-        });
-
-        await Promise.all(tagAnimations);
-      }
-
       await saveMoodEntry();
       setText('');
       setSelectedTags([]);
-
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to save entry');
@@ -360,70 +289,22 @@ export default function MoodEntry() {
               disabled={isTranscribing}
             >
               {isTranscribing ? (
-                <motion.div 
-                  className="w-8 h-8 border-2 border-white rounded-full border-t-transparent"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                />
+                <Loader2 className="w-8 h-8" />
               ) : (
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 300 300"
-                  className="h-8 w-8"
-                  fill="currentColor"
-                >
-                  <g transform="translate(0,300) scale(0.1,-0.1)">
-                    <path d="M1357 2799c-160-38-298-177-342-344-22-87-22-973 0-1060 45-172 194-313 364-345 69-13 173-13 242 0 178 33 336 191 369 369 6 31 10 248 10 515 0 508-2 525-62 638-56 105-181 200-299 227-53 13-229 12-282 0z" />
-                    <path d="M594 1700c-36-14-64-59-64-101 0-68 21-192 47-274 108-341 394-596 743-662l90-17 0-133 0-133-87 0c-49-1-128-2-177-4-86-3-91-4-118-35-38-42-37-83 1-122l29-29 442 0 442 0 29 29c39 39 39 80 0 123l-29 33-154 3c-84 1-163 2-175 2-23 0-23 2-23 133l0 133 90 17c406 77 722 410 779 821 16 114 14 149-10 180-30 38-64 49-106 35-44-14-59-46-66-144-24-314-230-579-527-680-374-127-786 48-954 405-45 95-65 173-73 279-5 72-10 88-32 112-29 32-65 43-97 29z" />
-                  </g>
-                </svg>
+                <Mic className="h-8 w-8" />
               )}
             </button>
             
             {isTranscribing && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute right-20 top-[50%] -translate-y-[50%] bg-white/90 backdrop-blur-sm shadow-lg rounded-lg px-4 py-2 flex items-center gap-2"
-              >
+              <div className="absolute right-20 top-[50%] -translate-y-[50%] bg-white/90 backdrop-blur-sm shadow-lg rounded-lg px-4 py-2 flex items-center gap-2">
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">Processing</span>
                   <span className="text-xs text-muted-foreground">
                     {audioBlob ? "Transcribing audio..." : "Analyzing text..."}
                   </span>
                 </div>
-                <motion.div 
-                  className="flex gap-1"
-                  initial="start"
-                  animate="end"
-                  variants={{
-                    start: { transition: { staggerChildren: 0.2 } },
-                    end: { transition: { staggerChildren: 0.2 } }
-                  }}
-                >
-                  <motion.span
-                    className="w-1.5 h-1.5 rounded-full bg-blue-500"
-                    variants={{
-                      start: { y: 0 },
-                      end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity } }
-                    }}
-                  />
-                  <motion.span
-                    className="w-1.5 h-1.5 rounded-full bg-blue-500"
-                    variants={{
-                      start: { y: 0 },
-                      end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.2 } }
-                    }}
-                  />
-                  <motion.span
-                    className="w-1.5 h-1.5 rounded-full bg-blue-500"
-                    variants={{
-                      start: { y: 0 },
-                      end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.4 } }
-                    }}
-                  />
-                </motion.div>
-              </motion.div>
+                <Loader2 className="w-8 h-8" />
+              </div>
             )}
           </div>
         </div>
@@ -469,7 +350,7 @@ export default function MoodEntry() {
         {(text || selectedTags.length > 0) && (
           <div className="flex justify-center mt-4">
             <Button
-              onClick={saveMoodEntry}
+              onClick={handleSubmit}
               disabled={isTranscribing || (!text && selectedTags.length === 0) || isSaving}
               className={cn(
                 "px-8",
@@ -481,57 +362,6 @@ export default function MoodEntry() {
           </div>
         )}
       </Card>
-      {/* Анимированная запись */}
-      {animatingEntry && (
-        <motion.div
-          initial={{ 
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            zIndex: 50,
-            opacity: 1,
-            scale: 1
-          }}
-          animate={{ 
-            top: '0%',
-            left: '0%',
-            opacity: 0,
-            scale: 0.5,
-            rotate: -5
-          }}
-          transition={{ 
-            duration: 0.7,
-            ease: [0.32, 0, 0.67, 0], 
-            rotate: {
-              duration: 0.4,
-              ease: "easeOut"
-            }
-          }}
-          className="pointer-events-none"
-        >
-          <div className="bg-white rounded-lg shadow-lg p-4 min-w-[200px]">
-            <p className="text-sm truncate">{animatingEntry.text}</p>
-            <div className="flex flex-wrap gap-1 mt-2">
-              {animatingEntry.tags.map(tagId => {
-                const tag = getTagById(tagId);
-                if (!tag) return null;
-                return (
-                  <span
-                    key={tag.id}
-                    className={cn(
-                      'px-2 py-0.5 text-xs rounded-full text-white',
-                      tag.color
-                    )}
-                  >
-                    {tag.name}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 }
