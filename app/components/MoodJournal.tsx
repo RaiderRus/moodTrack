@@ -10,26 +10,17 @@ import type { MoodEntry, JournalViewType, MoodTag } from '../types/mood';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, List, Calendar, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
 import { useMood } from '../contexts/MoodContext';
 import { AudioPlayer } from './AudioPlayer';
 import { playfair } from '../lib/fonts';
 import { cn } from '../lib/utils';
 
-type MoodTagCategory = keyof typeof moodTags;
-type MoodTagId = (typeof moodTags)[MoodTagCategory][number]['id'];
+type MoodTagId = (typeof moodTags)[keyof typeof moodTags][number]['id'];
 
 type FilterType = {
   date: Date | null;
   tags: MoodTagId[];
-  category: MoodTagCategory | null;
 };
 
 type MoodEntryWithTypedTags = Omit<MoodEntry, 'tags'> & {
@@ -42,12 +33,11 @@ interface MoodJournalProps {
 
 export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
   const { entries: rawEntries, newEntryId } = useMood();
-  const [viewType, setViewType] = useState<JournalViewType>('list');
+  const [isCalendarView, setIsCalendarView] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filters, setFilters] = useState<FilterType>({
     date: null,
-    tags: [],
-    category: null
+    tags: []
   });
 
   const entries = useMemo(() => 
@@ -66,14 +56,6 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
     if (filters.date) {
       filtered = filtered.filter(entry => 
         isSameDay(new Date(entry.createdAt), filters.date!)
-      );
-    }
-
-    if (filters.category) {
-      const categoryTags = moodTags[filters.category]
-        .map(tag => tag.id);
-      filtered = filtered.filter(entry =>
-        entry.tags.some(tag => categoryTags.includes(tag))
       );
     }
 
@@ -104,7 +86,6 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
 
   const handleDateClick = (date: Date) => {
     setFilters(prev => ({ ...prev, date }));
-    setViewType('list');
   };
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
@@ -118,29 +99,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
   };
 
   const renderFilters = () => (
-    <div className="mb-4 flex gap-2 flex-wrap">
-      <Select
-        value={filters.category || 'all'}
-        onValueChange={(value: string) => 
-          setFilters(prev => ({ 
-            ...prev, 
-            category: value === 'all' ? null : value as MoodTagCategory 
-          }))
-        }
-      >
-        <SelectTrigger className={cn("w-[180px]", playfair.className)}>
-          <SelectValue placeholder="Filter by category" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all" className={playfair.className}>All categories</SelectItem>
-          {(Object.keys(moodTags) as MoodTagCategory[]).map(category => (
-            <SelectItem key={category} value={category} className={playfair.className}>
-              {category.charAt(0).toUpperCase() + category.slice(1)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
+    <div className="mb-4 flex gap-2 items-center flex-wrap">
       <Select
         value={filters.tags.length > 0 ? filters.tags[0] : 'all'}
         onValueChange={(value: string) => 
@@ -165,6 +124,18 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
         </SelectContent>
       </Select>
 
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsCalendarView(!isCalendarView)}
+        className={cn(
+          "p-2",
+          isCalendarView && "bg-accent"
+        )}
+      >
+        <Calendar className="h-4 w-4" />
+      </Button>
+
       {filters.date && (
         <Button
           variant="outline"
@@ -176,11 +147,11 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
         </Button>
       )}
 
-      {(filters.category || filters.tags.length > 0 || filters.date) && (
+      {(filters.tags.length > 0 || filters.date) && (
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setFilters({ date: null, tags: [], category: null })}
+          onClick={() => setFilters({ date: null, tags: [] })}
           className={playfair.className}
         >
           Clear filters
@@ -340,23 +311,10 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
       id="mood-journal"
     >
       <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
-          <Tabs value={viewType} onValueChange={(value) => setViewType(value as JournalViewType)}>
-            <TabsList>
-              <TabsTrigger value="list">
-                <List className="h-4 w-4" />
-              </TabsTrigger>
-              <TabsTrigger value="calendar">
-                <Calendar className="h-4 w-4" />
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
         {renderFilters()}
 
         <ScrollArea className="h-[calc(100vh-13rem)]">
-          {viewType === 'list' ? renderListView() : renderCalendarView()}
+          {!isCalendarView ? renderListView() : renderCalendarView()}
         </ScrollArea>
       </div>
     </Card>
