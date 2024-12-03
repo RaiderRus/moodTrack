@@ -33,6 +33,11 @@ export default function MoodEntry() {
     isAnimating: boolean;
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [animatingEntry, setAnimatingEntry] = useState<{
+    text: string;
+    tags: string[];
+    isAnimating: boolean;
+  } | null>(null);
   const router = useRouter();
   const { addEntry } = useMood();
 
@@ -46,6 +51,16 @@ export default function MoodEntry() {
     
     checkAuth();
   }, [router]);
+
+  useEffect(() => {
+    if (animatingEntry?.isAnimating) {
+      const timer = setTimeout(() => {
+        setAnimatingEntry(null);
+      }, 1000); // Длительность анимации
+
+      return () => clearTimeout(timer);
+    }
+  }, [animatingEntry?.isAnimating]);
 
   const startRecording = async () => {
     try {
@@ -89,6 +104,14 @@ export default function MoodEntry() {
   const saveMoodEntry = async () => {
     if (isSaving) return; // Предотвращаем повторные запросы
     setIsSaving(true);
+
+    // Запускаем анимацию
+    setAnimatingEntry({
+      text,
+      tags: selectedTags,
+      isAnimating: true
+    });
+
     if (selectedTags.length === 0) {
       toast.error('Please select at least one tag');
       setIsSaving(false);
@@ -448,6 +471,57 @@ export default function MoodEntry() {
           </div>
         )}
       </Card>
+      {/* Анимированная запись */}
+      {animatingEntry && (
+        <motion.div
+          initial={{ 
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 50,
+            opacity: 1,
+            scale: 1
+          }}
+          animate={{ 
+            top: '0%',
+            left: '0%',
+            opacity: 0,
+            scale: 0.5,
+            rotate: -5
+          }}
+          transition={{ 
+            duration: 0.7,
+            ease: [0.32, 0, 0.67, 0], 
+            rotate: {
+              duration: 0.4,
+              ease: "easeOut"
+            }
+          }}
+          className="pointer-events-none"
+        >
+          <div className="bg-white rounded-lg shadow-lg p-4 min-w-[200px]">
+            <p className="text-sm truncate">{animatingEntry.text}</p>
+            <div className="flex flex-wrap gap-1 mt-2">
+              {animatingEntry.tags.map(tagId => {
+                const tag = getTagById(tagId);
+                if (!tag) return null;
+                return (
+                  <span
+                    key={tag.id}
+                    className={cn(
+                      'px-2 py-0.5 text-xs rounded-full text-white',
+                      tag.color
+                    )}
+                  >
+                    {tag.name}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }
