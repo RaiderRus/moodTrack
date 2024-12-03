@@ -32,6 +32,7 @@ export default function MoodEntry() {
     tags: string[];
     isAnimating: boolean;
   } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const { addEntry } = useMood();
 
@@ -86,8 +87,11 @@ export default function MoodEntry() {
   };
 
   const saveMoodEntry = async () => {
+    if (isSaving) return; // Предотвращаем повторные запросы
+    setIsSaving(true);
     if (selectedTags.length === 0) {
       toast.error('Please select at least one tag');
+      setIsSaving(false);
       return;
     }
 
@@ -166,6 +170,7 @@ export default function MoodEntry() {
       toast.error('Failed to save entry. Please try again.');
     } finally {
       setIsProcessing(false);
+      setIsSaving(false);
     }
   };
 
@@ -432,10 +437,13 @@ export default function MoodEntry() {
           <div className="flex justify-center mt-4">
             <Button
               onClick={saveMoodEntry}
-              disabled={isTranscribing || (!text && selectedTags.length === 0)}
-              className="px-8"
+              disabled={isTranscribing || (!text && selectedTags.length === 0) || isSaving}
+              className={cn(
+                "px-8",
+                isSaving && "opacity-50 cursor-not-allowed"
+              )}
             >
-              Save Entry
+              {isSaving ? 'Saving...' : 'Save Entry'}
             </Button>
           </div>
         )}
