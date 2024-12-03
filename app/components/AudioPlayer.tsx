@@ -43,9 +43,9 @@ export function AudioPlayer({ url, duration }: AudioPlayerProps) {
         className="p-1 rounded-full hover:bg-slate-100 transition-colors"
       >
         {isPlaying ? (
-          <Pause className="h-4 w-4" />
+          <Pause className="h-4 w-4 fill-black" />
         ) : (
-          <Play className="h-4 w-4" />
+          <Play className="h-4 w-4 fill-black" />
         )}
       </button>
       <span className="text-xs text-muted-foreground">
