@@ -20,7 +20,7 @@ app = FastAPI()
 # CORS настройки
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://mood-track-orpin.vercel.app", "http://localhost:3000"],
+    allow_origins=["https://mood-track-orpin.vercel.app", "http://localhost:3000", "https://mood-track-fix.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
