@@ -1,8 +1,11 @@
+export type MoodTagCategory = 'emotion' | 'activity' | 'place';
+
 export type MoodTag = {
   id: string;
   name: string;
-  category: 'emotion' | 'activity' | 'place';
+  category: MoodTagCategory;
   color: string;
+  hidden?: boolean;
 };
 
 export interface MoodEntry {

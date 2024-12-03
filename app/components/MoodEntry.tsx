@@ -170,15 +170,44 @@ export default function MoodEntry() {
   };
 
   const handleTagToggle = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
+    // Находим тег в любой категории
+    type MoodTagType = typeof moodTags[keyof typeof moodTags][number];
+    let foundTag: MoodTagType | undefined;
+    
+    for (const category of Object.values(moodTags)) {
+      const tag = category.find(t => t.id === tagId);
+      if (tag) {
+        foundTag = tag;
+        break;
+      }
+    }
+         
+    // Use this:
+    if (foundTag?.id === 'other') return;
+
+    setSelectedTags(prev => {
+      const newTags = new Set(prev);
+      if (newTags.has(tagId)) {
+        newTags.delete(tagId);
+        // Если после удаления тега не осталось других тегов, добавляем 'other'
+        if (newTags.size === 0) {
+          newTags.add('other');
+        }
+      } else {
+        newTags.add(tagId);
+        // Если добавляем новый тег, убираем 'other'
+        newTags.delete('other');
+      }
+      return Array.from(newTags);
+    });
   };
 
-  const getTagById = (tagId: string) => {
-    return Object.values(moodTags).flat().find(tag => tag.id === tagId);
+  const getTagById = (tagId: string): MoodTag | undefined => {
+    for (const category of Object.values(moodTags)) {
+      const tag = category.find(t => t.id === tagId);
+      if (tag) return tag;
+    }
+    return undefined;
   };
 
   const handleSubmit = async () => {
@@ -247,11 +276,22 @@ export default function MoodEntry() {
       setText(text); // Set the transcribed text first
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
-      setSelectedTags(prev => Array.from(new Set([...prev, ...tags])));
+      if (tags.length === 0) {
+        // Если нет тегов, добавляем 'other'
+        setSelectedTags(['other']);
+      } else {
+        // Если есть теги, убираем 'other' если он был
+        setSelectedTags(prev => {
+          const newTags = tags.filter(tag => tag !== 'other');
+          return Array.from(new Set(newTags));
+        });
+      }
       toast.success('Voice recording analyzed! Relevant tags have been selected.');
     } catch (error) {
       console.error('Failed to analyze text:', error);
       toast.error('Failed to analyze the recording.');
+      // В случае ошибки тоже добавляем тег 'other'
+      setSelectedTags(['other']);
     } finally {
       setIsTranscribing(false);
     }
@@ -262,97 +302,103 @@ export default function MoodEntry() {
       <Card className="p-4 space-y-4 w-full max-w-2xl bg-transparent border-0 shadow-none">
         <div className="relative flex items-start gap-4">
           <div className="flex-grow space-y-4">
-            {Object.entries(moodTags).map(([category, tags]) => (
-              <div key={category} className="space-y-2">
-                <h3 className="text-sm font-medium text-muted-foreground capitalize">
-                  {category.replace('_', ' ')}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      onClick={() => handleTagToggle(tag.id)}
-                      className={cn(
-                        'px-3 py-1 rounded-full text-sm transition-opacity hover:opacity-90',
-                        tag.color,
-                        'text-white',
-                        selectedTags.includes(tag.id) ? 'ring-2 ring-white/20' : ''
-                      )}
-                    >
-                      {tag.name}
-                    </button>
-                  ))}
+            <div className="space-y-4">
+              {Object.entries(moodTags).map(([category, tags]) => (
+                <div key={category} className="space-y-2">
+                  <h3 className="text-sm font-medium text-muted-foreground first-letter:uppercase">
+                    {category}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {tags
+                      .filter(tag => tag.id !== 'other')
+                      .map(tag => (
+                        <button
+                          key={tag.id}
+                          onClick={() => handleTagToggle(tag.id)}
+                          className={cn(
+                            'px-3 py-1 rounded-full text-sm transition-all',
+                            tag.color,
+                            'text-white',
+                            selectedTags.includes(tag.id) 
+                              ? 'ring-2 ring-white/20 shadow-lg scale-105' 
+                              : 'hover:opacity-90 hover:scale-102'
+                          )}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            className={cn(
-              'absolute right-0 top-[50%] -translate-y-[50%] w-16 h-16 rounded-full flex items-center justify-center transition-colors',
-              isRecording 
-                ? 'bg-red-400 hover:bg-red-500 text-white' 
-                : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
-            )}
-            disabled={isTranscribing}
-          >
-            {isTranscribing ? (
-              <motion.div 
-                className="w-8 h-8 border-2 border-white rounded-full border-t-transparent"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-              />
-            ) : (
-              <Mic className="h-8 w-8" />
-            )}
-          </button>
-          
-          {isTranscribing && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="absolute right-20 top-[50%] -translate-y-[50%] bg-white/90 backdrop-blur-sm shadow-lg rounded-lg px-4 py-2 flex items-center gap-2"
+              ))}
+            </div>
+            
+            <button
+              onClick={isRecording ? stopRecording : startRecording}
+              className={cn(
+                'absolute right-0 top-[50%] -translate-y-[50%] w-16 h-16 rounded-full flex items-center justify-center transition-colors',
+                isRecording 
+                  ? 'bg-red-400 hover:bg-red-500 text-white' 
+                  : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
+              )}
+              disabled={isTranscribing}
             >
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">Processing</span>
-                <span className="text-xs text-muted-foreground">
-                  {audioBlob ? "Transcribing audio..." : "Analyzing text..."}
-                </span>
-              </div>
-              <motion.div 
-                className="flex gap-1"
-                initial="start"
-                animate="end"
-                variants={{
-                  start: { transition: { staggerChildren: 0.2 } },
-                  end: { transition: { staggerChildren: 0.2 } }
-                }}
+              {isTranscribing ? (
+                <motion.div 
+                  className="w-8 h-8 border-2 border-white rounded-full border-t-transparent"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+              ) : (
+                <Mic className="h-8 w-8" />
+              )}
+            </button>
+            
+            {isTranscribing && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute right-20 top-[50%] -translate-y-[50%] bg-white/90 backdrop-blur-sm shadow-lg rounded-lg px-4 py-2 flex items-center gap-2"
               >
-                <motion.span
-                  className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Processing</span>
+                  <span className="text-xs text-muted-foreground">
+                    {audioBlob ? "Transcribing audio..." : "Analyzing text..."}
+                  </span>
+                </div>
+                <motion.div 
+                  className="flex gap-1"
+                  initial="start"
+                  animate="end"
                   variants={{
-                    start: { y: 0 },
-                    end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity } }
+                    start: { transition: { staggerChildren: 0.2 } },
+                    end: { transition: { staggerChildren: 0.2 } }
                   }}
-                />
-                <motion.span
-                  className="w-1.5 h-1.5 rounded-full bg-blue-500"
-                  variants={{
-                    start: { y: 0 },
-                    end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.2 } }
-                  }}
-                />
-                <motion.span
-                  className="w-1.5 h-1.5 rounded-full bg-blue-500"
-                  variants={{
-                    start: { y: 0 },
-                    end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.4 } }
-                  }}
-                />
+                >
+                  <motion.span
+                    className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                    variants={{
+                      start: { y: 0 },
+                      end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity } }
+                    }}
+                  />
+                  <motion.span
+                    className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                    variants={{
+                      start: { y: 0 },
+                      end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.2 } }
+                    }}
+                  />
+                  <motion.span
+                    className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                    variants={{
+                      start: { y: 0 },
+                      end: { y: [-2, 0], transition: { duration: 0.6, repeat: Infinity, delay: 0.4 } }
+                    }}
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          )}
+            )}
+          </div>
         </div>
 
         {selectedTags.length > 0 && (

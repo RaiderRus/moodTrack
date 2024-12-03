@@ -6,6 +6,7 @@ export const moodTags = {
     { id: 'anxious', name: 'Anxious', category: 'emotion', color: 'bg-purple-400' },
     { id: 'sad', name: 'Sad', category: 'emotion', color: 'bg-gray-400' },
     { id: 'angry', name: 'Angry', category: 'emotion', color: 'bg-red-400' },
+    { id: 'other', name: 'Other', category: 'emotion', color: 'bg-slate-300', hidden: true },
   ],
   activities: [
     { id: 'work_activity', name: 'Work', category: 'activity', color: 'bg-blue-500' },
