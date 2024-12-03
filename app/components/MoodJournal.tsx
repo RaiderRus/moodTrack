@@ -10,7 +10,8 @@ import type { MoodEntry, JournalViewType, MoodTag } from '../types/mood';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronUp, List, Calendar, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger, } from "@/components/ui/popover";
+import { Check } from "lucide-react";
 import { useMood } from '../contexts/MoodContext';
 import { AudioPlayer } from './AudioPlayer';
 import { playfair } from '../lib/fonts';
@@ -101,29 +102,64 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
 
   const renderFilters = () => (
     <div className="mb-4 flex gap-2 items-center flex-wrap">
-      <Select
-        value={filters.tags.length > 0 ? filters.tags[0] : 'all'}
-        onValueChange={(value: string) => 
-          setFilters(prev => ({ 
-            ...prev, 
-            tags: value === 'all' ? [] : [value as MoodTagId]
-          }))
-        }
-      >
-        <SelectTrigger className={cn("w-[180px]", playfair.className)}>
-          <SelectValue placeholder="Filter by tag" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all" className={playfair.className}>All tags</SelectItem>
-          {Object.entries(moodTags).flatMap(([category, tags]) => 
-            tags.map(tag => (
-              <SelectItem key={tag.id} value={tag.id} className={playfair.className}>
-                {tag.name}
-              </SelectItem>
-            ))
-          )}
-        </SelectContent>
-      </Select>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className={cn(
+              playfair.className,
+              "flex gap-2 items-center",
+              filters.tags.length > 0 && "bg-accent"
+            )}
+          >
+            Tags
+            {filters.tags.length > 0 && (
+              <span className="bg-primary/20 text-primary rounded-full px-2 py-0.5 text-xs">
+                {filters.tags.length}
+              </span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-2">
+          <div className="space-y-2">
+            {Object.entries(moodTags).flatMap(([category, tags]) => 
+              tags.map(tag => (
+                <div
+                  key={tag.id}
+                  className={cn(
+                    "flex items-center space-x-2 p-1.5 rounded-md hover:bg-accent cursor-pointer",
+                    filters.tags.includes(tag.id) && "bg-accent"
+                  )}
+                  onClick={() => {
+                    setFilters(prev => ({
+                      ...prev,
+                      tags: prev.tags.includes(tag.id)
+                        ? prev.tags.filter(t => t !== tag.id)
+                        : [...prev.tags, tag.id]
+                    }))
+                  }}
+                >
+                  <div className={cn(
+                    "h-4 w-4 rounded-sm border flex items-center justify-center",
+                    filters.tags.includes(tag.id) && "bg-primary border-primary"
+                  )}>
+                    {filters.tags.includes(tag.id) && (
+                      <Check className="h-3 w-3 text-primary-foreground" />
+                    )}
+                  </div>
+                  <span className={cn(
+                    "text-sm",
+                    filters.tags.includes(tag.id) && "font-medium"
+                  )}>
+                    {tag.name}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
 
       <Button
         variant="ghost"
