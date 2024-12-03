@@ -86,6 +86,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
 
   const handleDateClick = (date: Date) => {
     setFilters(prev => ({ ...prev, date }));
+    setIsCalendarView(false); // Close calendar view after date selection
   };
 
   const handleMonthChange = (direction: 'prev' | 'next') => {
@@ -314,7 +315,20 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
         {renderFilters()}
 
         <ScrollArea className="h-[calc(100vh-13rem)]">
-          {!isCalendarView ? renderListView() : renderCalendarView()}
+          <AnimatePresence>
+            {isCalendarView && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mb-4 overflow-hidden"
+              >
+                {renderCalendarView()}
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {renderListView()}
         </ScrollArea>
       </div>
     </Card>
