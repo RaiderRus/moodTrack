@@ -80,30 +80,22 @@ export default function MoodEntry() {
     }
   };
 
-  const saveMoodEntry = async () => {
-    if (isSaving) return;
+  const saveMoodEntry = async (tagsToSave: string[]) => {
+    if (isSaving) return false;
     setIsSaving(true);
 
-    if (selectedTags.length === 0) {
-      toast.error('Please select at least one tag');
-      setIsSaving(false);
-      return;
-    }
-
     try {
-      setIsProcessing(true);
-
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         router.push('/login');
-        return;
+        return false;
       }
 
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError) throw authError;
       if (!user) {
         toast.error('Please sign in to save entries');
-        return;
+        return false;
       }
 
       const { data: moodData, error: moodError } = await supabase
@@ -111,7 +103,7 @@ export default function MoodEntry() {
         .insert({
           user_id: user.id,
           text,
-          tags: selectedTags,
+          tags: tagsToSave,
           created_at: new Date().toISOString(),
         })
         .select()
@@ -156,13 +148,12 @@ export default function MoodEntry() {
 
       addEntry(newEntry);
       toast.success('Entry saved!');
-
-      setText('');
-      setSelectedTags([]);
       setAudioBlob(null);
+      return true;
     } catch (error) {
       console.error('Error saving mood entry:', error);
       toast.error('Failed to save entry. Please try again.');
+      return false;
     } finally {
       setIsProcessing(false);
       setIsSaving(false);
@@ -208,9 +199,43 @@ export default function MoodEntry() {
     setIsProcessing(true);
     
     try {
-      await saveMoodEntry();
-      setText('');
-      setSelectedTags([]);
+      let finalTags = selectedTags;
+
+      // Если есть текст, анализируем его и получаем теги
+      if (text.trim() && selectedTags.length === 0) {
+        try {
+          console.log('Starting text analysis...');
+          const analyzedTags = await analyzeMoodText(text);
+          console.log('Received tags:', analyzedTags);
+          if (analyzedTags.length > 0) {
+            finalTags = analyzedTags;
+          } else {
+            // Если теги не найдены, добавляем 'other'
+            finalTags = ['other'];
+          }
+        } catch (error) {
+          console.error('Failed to analyze text:', error);
+          toast.error('Failed to analyze text');
+          // В случае ошибки тоже добавляем тег 'other'
+          finalTags = ['other'];
+        }
+      }
+
+      // Проверяем наличие тегов перед сохранением
+      if (finalTags.length === 0) {
+        toast.error('Please select at least one tag');
+        return;
+      }
+
+      // Устанавливаем финальные теги
+      setSelectedTags(finalTags);
+
+      // Сохраняем запись с финальными тегами
+      const success = await saveMoodEntry(finalTags);
+      if (success) {
+        setText('');
+        setSelectedTags([]);
+      }
     } catch (error) {
       console.error('Error:', error);
       toast.error('Failed to save entry');
