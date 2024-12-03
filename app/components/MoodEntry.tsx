@@ -181,22 +181,15 @@ export default function MoodEntry() {
         break;
       }
     }
-         
-    // Use this:
-    if (foundTag?.id === 'other') return;
+    
+    if (tagId === 'other' && !selectedTags.includes(tagId)) return;
 
     setSelectedTags(prev => {
       const newTags = new Set(prev);
       if (newTags.has(tagId)) {
         newTags.delete(tagId);
-        // Если после удаления тега не осталось других тегов, добавляем 'other'
-        if (newTags.size === 0) {
-          newTags.add('other');
-        }
       } else {
         newTags.add(tagId);
-        // Если добавляем новый тег, убираем 'other'
-        newTags.delete('other');
       }
       return Array.from(newTags);
     });
@@ -280,11 +273,7 @@ export default function MoodEntry() {
         // Если нет тегов, добавляем 'other'
         setSelectedTags(['other']);
       } else {
-        // Если есть теги, убираем 'other' если он был
-        setSelectedTags(prev => {
-          const newTags = tags.filter(tag => tag !== 'other');
-          return Array.from(new Set(newTags));
-        });
+        setSelectedTags(tags);
       }
       toast.success('Voice recording analyzed! Relevant tags have been selected.');
     } catch (error) {
@@ -401,34 +390,34 @@ export default function MoodEntry() {
           </div>
         </div>
 
+        {/* Selected Tags */}
         {selectedTags.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-2 bg-muted rounded-lg">
-            {selectedTags.map((tagId) => {
-              const tag = Object.values(moodTags)
-                .flat()
-                .find(t => t.id === tagId);
-              return tag ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {selectedTags.map(tagId => {
+              const tag = getTagById(tagId);
+              if (!tag) return null;
+              return (
                 <div
-                  key={tagId}
+                  key={tag.id}
                   className={cn(
-                    "px-3 py-1 rounded-full text-sm flex items-center gap-1",
-                    tag.color,
-                    'text-white'
+                    'px-2 py-1 text-sm rounded-full text-white flex items-center gap-1',
+                    tag.color
                   )}
                 >
                   {tag.name}
                   <button
+                    onClick={() => handleTagToggle(tag.id)}
                     className="ml-1 hover:opacity-80 transition-opacity"
-                    onClick={() => handleTagToggle(tagId)}
                   >
                     <X className="h-3 w-3" />
                   </button>
                 </div>
-              ) : null;
+              );
             })}
           </div>
         )}
 
+        {/* Text Input */}
         <div className="flex gap-2">
           <Input
             value={text}
@@ -438,11 +427,13 @@ export default function MoodEntry() {
           />
         </div>
 
-        {(selectedTags.length > 0 || text) && (
-          <div className="flex justify-end">
+        {/* Save Button */}
+        {(text || selectedTags.length > 0) && (
+          <div className="flex justify-center mt-4">
             <Button
               onClick={saveMoodEntry}
               disabled={isTranscribing || (!text && selectedTags.length === 0)}
+              className="px-8"
             >
               Save Entry
             </Button>
