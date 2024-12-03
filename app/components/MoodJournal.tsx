@@ -224,10 +224,12 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
                 <span className="text-sm text-gray-500">
                   {formatDate(entry.createdAt)}
                 </span>
-                {entry.audioUrl && entry.audioDuration && (
-                  <AudioPlayer url={entry.audioUrl} duration={entry.audioDuration} />
-                )}
               </div>
+              {entry.audioUrl && entry.audioDuration && (
+                <div className="mt-2">
+                  <AudioPlayer url={entry.audioUrl} duration={entry.audioDuration} />
+                </div>
+              )}
               {entry.text && (
                 <p className="mb-2">{entry.text}</p>
               )}
