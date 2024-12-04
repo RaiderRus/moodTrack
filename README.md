@@ -6,13 +6,13 @@ Mindsetr - это современное веб-приложение для от
 
 - Frontend: Next.js 15.0+, React, TypeScript
 - Стилизация: Tailwind CSS, Shadcn/ui
-- Backend: Supabase (PostgreSQL, Auth, Storage)
+- Backend: FastAPI, Supabase (PostgreSQL, Auth, Storage)
 - Деплой: Vercel
 
 ## Предварительные требования
 
 - Node.js 18.0 или выше
-- Python 3.8 или выше (для настройки Supabase)
+- Python 3.8 или выше
 - Git
 - Аккаунты на GitHub, Vercel и Supabase
 
@@ -21,19 +21,9 @@ Mindsetr - это современное веб-приложение для от
 ### 1. Настройка Supabase
 
 1. Создайте новый проект на [Supabase](https://supabase.com)
-2. Установите Python зависимости:
-   ```bash
-   pip install supabase
-   ```
-3. В файле `supabase_setup.py` укажите URL и ключ вашего проекта:
-   ```python
-   SUPABASE_URL = "your-project-url"
-   SUPABASE_KEY = "your-service-role-key"
-   ```
-4. Запустите скрипт настройки базы данных:
-   ```bash
-   python supabase_setup.py
-   ```
+2. В Project settings -> API и скопируйте API key и URL project 
+3. Создайте storage bucket под именем "audio-recordings" и сделайте его публичным
+4. Зайдите в SQL Editor, введите в редактор код из файла `schema.sql` и нажмите RUN
 
 ### 2. Настройка аутентификации в Supabase
 
@@ -66,6 +56,7 @@ Mindsetr - это современное веб-приложение для от
 
 ```bash
 npm install
+pip install -r requirements.txt
 ```
 
 ### 5. Настройка переменных окружения
@@ -75,7 +66,9 @@ npm install
    ```
    NEXT_PUBLIC_SUPABASE_URL=your-project-url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   NEXT_PUBLIC_API_URL=http://localhost:8000
    ```
+3. Заполните OPENAI_API_KEY в `.env` в папке `backend`   
 
 ### 6. Деплой на Vercel
 
@@ -84,6 +77,8 @@ npm install
 3. Добавьте переменные окружения в настройках проекта:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_API_URL`
+   - `OPENAI_API_KEY`
 4. Нажмите "Deploy"
 
 ## Структура базы данных
@@ -114,10 +109,11 @@ npm install
 
 1. Запустите сервер разработки:
    ```bash
+   Frontend:
    npm run dev
+   
+   Backend:
+   cd backend
+   uvicorn main:app --reload
    ```
 2. Откройте [http://localhost:3000](http://localhost:3000)
-
-## Лицензия
-
-MIT
