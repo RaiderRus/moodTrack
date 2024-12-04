@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Mic, Send, Loader2, X, Calendar, Clock } from "lucide-react";
+import { Send, Loader2, X, Calendar, Clock } from "lucide-react";
+import { CustomMicrophoneIcon } from "./ui/icons/microphone";
 import { moodTags } from '../config/mood-tags';
 import { transcribeAudio, analyzeMoodText, getMoodEntries, saveAudioRecording } from '../lib/api';
 import { supabase } from '../lib/supabase';
@@ -316,7 +317,10 @@ export default function MoodEntry() {
               {isTranscribing ? (
                 <Loader2 className="w-8 h-8" />
               ) : (
-                <Mic className="h-8 w-8" />
+                <CustomMicrophoneIcon className={cn(
+                  "h-8 w-8",
+                  isRecording && "text-destructive"
+                )} />
               )}
             </button>
             
