@@ -54,9 +54,10 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
   const filteredEntries = useMemo(() => {
     let filtered = [...entries];
 
-    if (filters.date) {
-      const filterDate = filters.date; // Create a stable reference
+    if (filters.date !== null) {  
+      const filterDate = filters.date;
       filtered = filtered.filter(entry => {
+        if (!entry.createdAt) return false;
         const entryDate = new Date(entry.createdAt);
         return isSameDay(entryDate, filterDate);
       });
@@ -69,7 +70,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
     }
 
     return filtered;
-  }, [entries, filters]);
+  }, [entries, filters.date, filters.tags]); 
 
   const getTagDetails = (tagId: MoodTagId) => {
     return Object.values(moodTags).flat().find(tag => tag.id === tagId);
