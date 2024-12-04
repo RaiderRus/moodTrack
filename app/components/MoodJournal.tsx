@@ -55,9 +55,11 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
     let filtered = [...entries];
 
     if (filters.date) {
-      filtered = filtered.filter(entry => 
-        isSameDay(new Date(entry.createdAt), filters.date!)
-      );
+      const filterDate = filters.date; // Create a stable reference
+      filtered = filtered.filter(entry => {
+        const entryDate = new Date(entry.createdAt);
+        return isSameDay(entryDate, filterDate);
+      });
     }
 
     if (filters.tags.length > 0) {
@@ -86,7 +88,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
   };
 
   const handleDateClick = (date: Date) => {
-    setFilters(prev => ({ ...prev, date }));
+    handleDateFilter(date);
     setIsCalendarView(false); // Close calendar view after date selection
   };
 
@@ -98,6 +100,25 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
       newDate.setMonth(newDate.getMonth() + 1);
     }
     setCurrentMonth(newDate);
+  };
+
+  // Обработчики фильтров
+  const handleDateFilter = (date: Date | null) => {
+    const newFilters = { ...filters, date };
+    setFilters(newFilters);
+  };
+
+  const handleTagFilter = (tagId: MoodTagId) => {
+    const newTags = filters.tags.includes(tagId)
+      ? filters.tags.filter(t => t !== tagId)
+      : [...filters.tags, tagId];
+    const newFilters = { ...filters, tags: newTags };
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    const newFilters = { date: null, tags: [] };
+    setFilters(newFilters);
   };
 
   const renderFilters = () => (
@@ -131,14 +152,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
                     "flex items-center space-x-2 p-1.5 rounded-md hover:bg-accent cursor-pointer",
                     filters.tags.includes(tag.id) && "bg-accent"
                   )}
-                  onClick={() => {
-                    setFilters(prev => ({
-                      ...prev,
-                      tags: prev.tags.includes(tag.id)
-                        ? prev.tags.filter(t => t !== tag.id)
-                        : [...prev.tags, tag.id]
-                    }))
-                  }}
+                  onClick={() => handleTagFilter(tag.id)}
                 >
                   <div className={cn(
                     "h-4 w-4 rounded-sm border flex items-center justify-center",
@@ -177,7 +191,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setFilters(prev => ({ ...prev, date: null }))}
+          onClick={() => handleDateFilter(null)}
           className={playfair.className}
         >
           {format(filters.date, 'PP')} ✕
@@ -188,7 +202,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setFilters({ date: null, tags: [] })}
+          onClick={handleClearFilters}
           className={playfair.className}
         >
           Clear filters
