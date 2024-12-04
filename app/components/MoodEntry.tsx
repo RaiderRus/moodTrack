@@ -315,11 +315,11 @@ export default function MoodEntry() {
               disabled={isTranscribing}
             >
               {isTranscribing ? (
-                <Loader2 className="w-8 h-8" />
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
               ) : (
                 <CustomMicrophoneIcon className={cn(
                   "h-8 w-8",
-                  isRecording && "text-destructive"
+                  isRecording && "text-white"
                 )} />
               )}
             </button>
@@ -332,7 +332,7 @@ export default function MoodEntry() {
                     {audioBlob ? "Transcribing audio..." : "Analyzing text..."}
                   </span>
                 </div>
-                <Loader2 className="w-8 h-8" />
+                <Loader2 className="w-8 h-8 animate-spin text-white" />
               </div>
             )}
           </div>
