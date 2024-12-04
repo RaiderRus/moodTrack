@@ -310,7 +310,7 @@ export default function MoodEntry() {
                 'absolute right-0 top-[50%] -translate-y-[50%] w-16 h-16 rounded-full flex items-center justify-center transition-colors',
                 isRecording 
                   ? 'bg-red-400 hover:bg-red-500 text-white' 
-                  : 'bg-slate-400 hover:bg-slate-500 text-slate-100'
+                  : 'bg-black hover:bg-black/90 text-white'
               )}
               disabled={isTranscribing}
             >

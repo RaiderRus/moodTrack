@@ -24,7 +24,7 @@ export default function Sidebar({ isCollapsed, onCollapsedChange }: SidebarProps
       <div
         className={cn(
           'fixed left-0 top-0 z-40 flex h-screen flex-col border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 transition-all duration-700 ease-in-out',
-          isCollapsed ? 'w-[60px]' : 'w-[300px]'
+          isCollapsed ? 'w-[60px]' : 'w-[350px]'
         )}
       >
         <div className="pt-4">
