@@ -16,10 +16,10 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
       body: formData,
       headers: {
         'Accept': 'application/json',
-        // Не устанавливаем Content-Type, так как он автоматически устанавливается для FormData
+        // Don't set Content-Type as it's automatically set for FormData
       },
-      credentials: 'include', // Добавляем поддержку кук
-      mode: 'cors', // Явно указываем режим CORS
+      credentials: 'include', // Add cookie support
+      mode: 'cors', // Explicitly specify CORS mode
     });
 
     if (!response.ok) {
@@ -81,7 +81,7 @@ export async function getMoodEntries() {
     return [];
   }
 
-  console.log('Fetched entries:', data); // Отладочный лог
+  console.log('Fetched entries:', data); // Debug log
   return data;
 }
 
@@ -104,11 +104,11 @@ export async function saveAudioRecording(audioBlob: Blob, moodEntryId: string): 
       }
     }
 
-    // Получаем размер файла в байтах и примерную длительность
+    // Get file size in bytes and estimated duration
     const fileSizeInBytes = uploadBlob.size;
-    // WebM Opus использует примерно 24 КБ/с (24576 байт/с)
+    // WebM Opus uses approximately 24 KB/s (24576 bytes/s)
     const bytesPerSecond = 24576;
-    const estimatedDuration = Math.ceil(fileSizeInBytes / bytesPerSecond * 1.5); // Применяем коэффициент коррекции
+    const estimatedDuration = Math.ceil(fileSizeInBytes / bytesPerSecond * 1.5); // Apply correction factor
     console.log('File size:', fileSizeInBytes, 'bytes');
     console.log('Estimated duration from file size:', estimatedDuration, 'seconds');
 
@@ -131,8 +131,8 @@ export async function saveAudioRecording(audioBlob: Blob, moodEntryId: string): 
       .from('audio-recordings')
       .getPublicUrl(fileName);
 
-    // Используем оценочную длительность, убеждаясь что она в разумных пределах
-    const finalDuration = Math.min(Math.max(1, estimatedDuration), 300); // Не более 5 минут
+    // Use estimated duration, ensuring it's within reasonable limits
+    const finalDuration = Math.min(Math.max(1, estimatedDuration), 300); // Not more than 5 minutes
     console.log('Final duration:', finalDuration, 'seconds');
 
     const { error: dbError } = await supabase

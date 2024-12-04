@@ -15,7 +15,7 @@ export default function WelcomeScreen({ onComplete, onStartAnimation }: WelcomeS
   const handleClick = () => {
     setIsAnimating(true);
     onStartAnimation();
-    // Задержка перед вызовом onComplete, чтобы анимация успела проиграться
+    // Delay before calling onComplete to allow the animation to play
     setTimeout(onComplete, 1000);
   };
 
@@ -82,7 +82,7 @@ export default function WelcomeScreen({ onComplete, onStartAnimation }: WelcomeS
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
         >
-          {/* Анимация "рассыпания" */}
+          {/* Animation of "scattering" */}
           {Array.from({ length: 12 }).map((_, i) => (
             <motion.div
               key={i}

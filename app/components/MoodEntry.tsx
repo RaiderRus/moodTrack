@@ -162,7 +162,7 @@ export default function MoodEntry() {
   };
 
   const handleTagToggle = (tagId: string) => {
-    // Находим тег в любой категории
+    // Find tag in any category
     type MoodTagType = typeof moodTags[keyof typeof moodTags][number];
     let foundTag: MoodTagType | undefined;
     
@@ -202,7 +202,7 @@ export default function MoodEntry() {
     try {
       let finalTags = selectedTags;
 
-      // Если есть текст, анализируем его и получаем теги
+      // If there is text, analyze it and get tags
       if (text.trim() && selectedTags.length === 0) {
         try {
           console.log('Starting text analysis...');
@@ -211,27 +211,27 @@ export default function MoodEntry() {
           if (analyzedTags.length > 0) {
             finalTags = analyzedTags;
           } else {
-            // Если теги не найдены, добавляем 'other'
+            // If no tags are found, add 'other'
             finalTags = ['other'];
           }
         } catch (error) {
           console.error('Failed to analyze text:', error);
           toast.error('Failed to analyze text');
-          // В случае ошибки тоже добавляем тег 'other'
+          // In case of error, also add 'other' tag
           finalTags = ['other'];
         }
       }
 
-      // Проверяем наличие тегов перед сохранением
+      // Check for tags before saving
       if (finalTags.length === 0) {
         toast.error('Please select at least one tag');
         return;
       }
 
-      // Устанавливаем финальные теги
+      // Set final tags
       setSelectedTags(finalTags);
 
-      // Сохраняем запись с финальными тегами
+      // Save entry with final tags
       const success = await saveMoodEntry(finalTags);
       if (success) {
         setText('');
@@ -253,7 +253,7 @@ export default function MoodEntry() {
       const tags = await analyzeMoodText(text);
       console.log('Received tags:', tags);
       if (tags.length === 0) {
-        // Если нет тегов, добавляем 'other'
+        // If no tags are found, add 'other'
         setSelectedTags(['other']);
       } else {
         setSelectedTags(tags);
@@ -262,7 +262,7 @@ export default function MoodEntry() {
     } catch (error) {
       console.error('Failed to analyze text:', error);
       toast.error('Failed to analyze the recording.');
-      // В случае ошибки тоже добавляем тег 'other'
+      // In case of error, also add 'other' tag
       setSelectedTags(['other']);
     } finally {
       setIsTranscribing(false);

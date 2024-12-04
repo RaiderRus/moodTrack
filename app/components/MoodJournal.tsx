@@ -103,7 +103,7 @@ export default function MoodJournal({ hideExpandButton }: MoodJournalProps) {
     setCurrentMonth(newDate);
   };
 
-  // Обработчики фильтров
+  // Filter handlers
   const handleDateFilter = (date: Date | null) => {
     const newFilters = { ...filters, date };
     setFilters(newFilters);
