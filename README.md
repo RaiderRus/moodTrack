@@ -27,6 +27,7 @@ cd moodTrack
 
 ### 2. Install Dependencies
 ```bash
+npm init -y
 npm install
 pip install -r requirements.txt
 ```
