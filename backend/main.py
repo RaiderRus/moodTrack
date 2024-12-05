@@ -9,7 +9,7 @@ import logging
 from dotenv import load_dotenv
 import tempfile
 
-# Настраиваем логирование
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -17,16 +17,16 @@ load_dotenv()
 
 app = FastAPI()
 
-# CORS настройки
+# CORS settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://mood-track-orpin.vercel.app", "http://localhost:3000", "https://mood-track-fix.vercel.app"],
+    allow_origins=[os.getenv("NEXT_PUBLIC_API_URL"), "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Проверяем наличие API ключа
+# Check for API key presence
 if not os.getenv("OPENAI_API_KEY"):
     logger.error("OPENAI_API_KEY not found in environment variables")
     raise ValueError("OPENAI_API_KEY environment variable is not set")
@@ -53,15 +53,15 @@ async def health_check():
 async def transcribe_audio(file: UploadFile = File(...)):
     temp_file_path = None
     try:
-        logger.info(f"Получен файл для транскрипции: {file.filename}")
+        logger.info(f"Received file for transcription: {file.filename}")
         content = await file.read()
 
-        # Создание временного файла
+        # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as temp_file:
             temp_file.write(content)
             temp_file_path = temp_file.name
 
-        # Открытие временного файла для чтения
+        # Open temporary file for reading
         with open(temp_file_path, "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
                 model="whisper-1",
@@ -69,13 +69,13 @@ async def transcribe_audio(file: UploadFile = File(...)):
                 response_format="text"
             )
 
-        logger.info(f"Результат транскрипции: {transcript}")
+        logger.info(f"Transcription result: {transcript}")
         return JSONResponse(content={"text": transcript})
     except Exception as e:
-        logger.error(f"Ошибка при транскрипции: {str(e)}")
+        logger.error(f"Transcription error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Удаление временного файла, если он был создан
+        # Delete temporary file if it was created
         if temp_file_path and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
@@ -105,20 +105,20 @@ async def analyze_text(request: TextAnalysisRequest):
             max_tokens=100
         )
         
-        # Логируем полный ответ от OpenAI
+        # Log full OpenAI response
         logger.info(f"Full OpenAI response: {response}")
         
-        # Получаем текст ответа
+        # Get response text
         response_text = response.choices[0].message.content.strip()
         logger.info(f"Raw response text: {response_text}")
         
         try:
-            # Пытаемся преобразовать текст в список
+            # Try to parse text as JSON
             import json
             tags = json.loads(response_text)
             logger.info(f"Parsed tags: {tags}")
             
-            # Проверяем, что все теги валидные
+            # Check that all tags are valid
             valid_tags = [
                 "happy", "excited", "calm", "anxious", "sad", "angry",
                 "work_activity", "exercise", "social", "rest",

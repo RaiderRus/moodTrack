@@ -3,7 +3,7 @@ import { supabase } from '@/app/lib/supabaseClient';
 const isDevelopment = process.env.NODE_ENV === 'development';
 const API_URL = isDevelopment 
   ? 'http://localhost:8000'
-  : process.env.NEXT_PUBLIC_API_URL || 'https://mood-track-orpin.vercel.app';
+  : process.env.NEXT_PUBLIC_API_URL;
 
 export async function transcribeAudio(audioBlob: Blob): Promise<string> {
   try {
